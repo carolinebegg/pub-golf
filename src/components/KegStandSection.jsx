@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   buildKegStandTeamLeaderboard,
-  calculateTeamAverageKegSeconds,
   formatSeconds,
 } from '../lib/helpers'
 
@@ -177,10 +176,6 @@ export default function KegStandSection({
     return enrichedEntries.filter((entry) => entry.team_id === team.id)
   }, [enrichedEntries, team.id])
 
-  const teamAverage = useMemo(() => {
-    return calculateTeamAverageKegSeconds(teamEntries)
-  }, [teamEntries])
-
   const teamLeaderboard = useMemo(() => {
     return buildKegStandTeamLeaderboard(entries).map((row) => {
       const t = allTeams.find((teamRow) => teamRow.id === row.team_id)
@@ -196,15 +191,14 @@ export default function KegStandSection({
   return (
     <div style={styles.wrap}>
       <section style={styles.primaryAction}>
+        <h4 style={styles.sectionTitle}>{editingEntryId ? 'Edit entry' : 'Add entry'}</h4>
         <form onSubmit={handleSubmit} style={styles.form}>
-          <h5 style={styles.sectionTitle}>{editingEntryId ? 'Edit entry' : 'Add entry'}</h5>
-
-          <label style={styles.fieldLabel}>
-            Team member
+          <div style={styles.controlsRow}>
             <select
+              aria-label="Team member"
               value={memberName}
               onChange={(e) => setMemberName(e.target.value)}
-              style={styles.input}
+              style={{ ...styles.input, ...styles.memberInput }}
             >
               <option value="">Select team member</option>
               {team.members?.map((member) => (
@@ -213,26 +207,22 @@ export default function KegStandSection({
                 </option>
               ))}
             </select>
-          </label>
 
-          <label style={styles.fieldLabel}>
-            Seconds
             <input
+              aria-label="Seconds"
               type="number"
               min="0"
               step="0.01"
               placeholder="0.00"
               value={seconds}
               onChange={(e) => setSeconds(e.target.value)}
-              style={styles.input}
+              style={{ ...styles.input, ...styles.secondsInput }}
             />
-          </label>
 
-          <div style={styles.buttonRow}>
             <button
               type="submit"
               disabled={saving || !memberName || seconds === ''}
-              style={styles.button}
+              style={styles.primaryButton}
             >
               {saving
                 ? 'Saving...'
@@ -240,25 +230,19 @@ export default function KegStandSection({
                 ? 'Update entry'
                 : 'Add keg entry'}
             </button>
-
-            {editingEntryId ? (
-              <button type="button" onClick={cancelEdit} style={styles.secondaryButton}>
-                Cancel edit
-              </button>
-            ) : null}
           </div>
+
+          {editingEntryId ? (
+            <button type="button" onClick={cancelEdit} style={styles.secondaryButton}>
+              Cancel edit
+            </button>
+          ) : null}
         </form>
       </section>
 
-      {teamAverage !== null && (
-        <p style={styles.teamAverageCard}>
-          Your team average: <strong>{formatSeconds(teamAverage)}</strong>
-        </p>
-      )}
-
       {teamEntries.length > 0 && (
         <section style={styles.simpleSection}>
-          <h3 style={styles.heading}>Your team entries</h3>
+          <h3 style={styles.heading}>Your entries</h3>
           <div style={styles.list}>
             {teamEntries.map((entry) => (
               <div key={entry.id} style={styles.row}>
@@ -290,7 +274,7 @@ export default function KegStandSection({
 
       <section style={styles.resultsPanel}>
         <div style={styles.resultsHeader}>
-          <h3 style={styles.heading}>Keg stand results</h3>
+          <h3 style={styles.heading}>Results</h3>
           <button
             type="button"
             onClick={() => setShowLeaderboard((v) => !v)}
@@ -303,14 +287,19 @@ export default function KegStandSection({
         {showLeaderboard ? (
           <>
             <div style={styles.subsection}>
-              <h4 style={styles.subHeading}>Individual leaderboard</h4>
+              <h4 style={styles.subHeading}>Individuals</h4>
               {loading ? (
                 <p>Loading...</p>
               ) : (
                 <div style={styles.list}>
                   {enrichedEntries.map((entry, index) => (
                     <div key={entry.id} style={styles.row}>
-                      <span style={styles.rowText}>#{index + 1} — {entry.member_name}: {formatSeconds(entry.seconds)} ({entry.teamLabel})</span>
+                      <div style={styles.resultMainLine}>
+                        <span style={styles.rankValue}>#{index + 1}</span>
+                        <span style={styles.resultName}>{entry.member_name}</span>
+                        <span style={styles.resultTime}>{formatSeconds(entry.seconds)}</span>
+                      </div>
+                      <span style={styles.resultSubLine}>{entry.teamLabel}</span>
                     </div>
                   ))}
                   {!enrichedEntries.length && <div style={styles.emptyRow}>No entries yet.</div>}
@@ -319,11 +308,16 @@ export default function KegStandSection({
             </div>
 
             <div style={styles.subsection}>
-              <h4 style={styles.subHeading}>Team averages</h4>
+              <h4 style={styles.subHeading}>Team scores</h4>
               <div style={styles.list}>
                 {teamLeaderboard.map((row, index) => (
                   <div key={row.team_id} style={styles.row}>
-                    <span style={styles.rowText}>#{index + 1} — {row.teamLabel}: {formatSeconds(row.average)} avg → hole score {row.rankScore}</span>
+                    <div style={styles.resultMainLine}>
+                      <span style={styles.rankValue}>#{index + 1}</span>
+                      <span style={styles.resultName}>{row.teamLabel}</span>
+                      <span style={styles.resultTime}>{formatSeconds(row.average)}</span>
+                    </div>
+                    <span style={styles.resultSubLine}>Hole score {row.rankScore}</span>
                   </div>
                 ))}
                 {!teamLeaderboard.length && <div style={styles.emptyRow}>No team results yet.</div>}
@@ -342,41 +336,36 @@ export default function KegStandSection({
 }
 
 const styles = {
-  wrap: { marginTop: 8, display: 'grid', gap: 10 },
+  wrap: { marginTop: 6, display: 'grid', gap: 12 },
   primaryAction: {
-    background: '#fff',
-    borderRadius: 12,
-    padding: 10,
-    border: '1px solid #dde6de',
+    display: 'grid',
+    gap: 8,
+    paddingTop: 4,
   },
   simpleSection: {
-    padding: '2px 0',
+    paddingTop: 10,
+    borderTop: '1px solid #e3e9e3',
     display: 'grid',
     gap: 8,
   },
   resultsPanel: {
-    background: '#fff',
-    border: '1px solid #dde6de',
-    borderRadius: 12,
-    padding: 10,
+    borderTop: '1px solid #e7ece7',
+    paddingTop: 10,
     display: 'grid',
-    gap: 9,
+    gap: 8,
   },
   form: { display: 'grid', gap: 8 },
+  controlsRow: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   sectionTitle: {
     margin: 0,
-    fontSize: '0.92rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    color: '#5e7167',
+    fontSize: '0.95rem',
+    color: '#1f3027',
     fontWeight: 800,
-  },
-  fieldLabel: {
-    display: 'grid',
-    gap: 5,
-    fontSize: '0.9rem',
-    color: '#2e4639',
-    fontWeight: 700,
   },
   input: {
     padding: 11,
@@ -384,13 +373,15 @@ const styles = {
     border: '1px solid #ccd6ce',
     fontSize: 15,
     background: '#fff',
+    minHeight: 42,
   },
-  buttonRow: {
-    display: 'flex',
-    gap: 8,
-    flexWrap: 'wrap',
+  memberInput: {
+    flex: '1 1 190px',
   },
-  button: {
+  secondsInput: {
+    flex: '0 1 130px',
+  },
+  primaryButton: {
     padding: '11px 14px',
     minHeight: 44,
     borderRadius: 11,
@@ -400,54 +391,47 @@ const styles = {
     fontWeight: 800,
   },
   secondaryButton: {
-    padding: '10px 12px',
-    minHeight: 40,
-    borderRadius: 11,
-    border: '1px solid #ced8d0',
-    background: '#fff',
+    width: 'fit-content',
+    border: 'none',
+    background: 'transparent',
+    color: '#4f6458',
+    padding: 0,
+    fontSize: '0.84rem',
     fontWeight: 700,
   },
   smallSecondaryButton: {
-    padding: '6px 8px',
-    borderRadius: 9,
-    border: '1px solid #d6e1d8',
-    background: '#f7fbf8',
-    color: '#30533f',
+    border: 'none',
+    background: 'transparent',
+    color: '#446355',
     fontWeight: 600,
     fontSize: '0.8rem',
+    padding: 0,
   },
   smallDangerButton: {
-    padding: '6px 8px',
-    borderRadius: 9,
-    border: '1px solid #e3c7c7',
-    background: '#fff',
+    border: 'none',
+    background: 'transparent',
     color: '#8a1f1f',
     fontWeight: 600,
     fontSize: '0.8rem',
-  },
-  teamAverageCard: {
-    margin: 0,
-    color: '#264736',
-    fontSize: '0.9rem',
+    padding: 0,
   },
   subsection: {
     display: 'grid',
-    gap: 6,
+    gap: 5,
   },
   subHeading: {
     margin: 0,
-    fontSize: '0.84rem',
+    fontSize: '0.78rem',
     textTransform: 'uppercase',
-    letterSpacing: '0.05em',
+    letterSpacing: '0.06em',
     color: '#6a7d72',
+    fontWeight: 700,
   },
   heading: {
     margin: 0,
-    fontSize: '0.94rem',
+    fontSize: '0.92rem',
     color: '#194c31',
     fontWeight: 800,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
   },
   resultsHeader: {
     display: 'flex',
@@ -456,15 +440,12 @@ const styles = {
     gap: 10,
     flexWrap: 'wrap',
   },
-  list: { display: 'grid', gap: 8 },
+  list: { display: 'grid', gap: 0 },
   row: {
-    padding: '8px 0',
+    padding: '7px 0',
     borderTop: '1px solid #e7efe8',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
+    display: 'grid',
+    gap: 2,
   },
   rowText: {
     color: '#2c4236',
@@ -473,18 +454,42 @@ const styles = {
   },
   rowActions: {
     display: 'flex',
-    gap: 6,
+    gap: 10,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  resultMainLine: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'baseline',
     flexWrap: 'wrap',
   },
+  rankValue: {
+    color: '#1f5a3a',
+    fontWeight: 800,
+    minWidth: 26,
+  },
+  resultName: {
+    color: '#1f3027',
+    fontWeight: 700,
+  },
+  resultTime: {
+    color: '#3e5448',
+    fontWeight: 700,
+  },
+  resultSubLine: {
+    color: '#5f6e65',
+    fontSize: '0.84rem',
+  },
   emptyRow: {
-    padding: '8px 0',
+    padding: '6px 0',
     color: '#666',
     fontSize: '0.88rem',
   },
   helperCopy: {
     margin: 0,
     color: '#5f6e65',
-    fontSize: '0.88rem',
+    fontSize: '0.84rem',
   },
   success: {
     color: '#17663a',

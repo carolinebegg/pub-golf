@@ -11,6 +11,7 @@ export default function PitcherRaceSection({
   const [finishes, setFinishes] = useState([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showResults, setShowResults] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -142,6 +143,7 @@ export default function PitcherRaceSection({
   return (
     <div style={styles.wrap}>
       <section style={styles.actionBlock}>
+        <h4 style={styles.sectionTitle}>Finish pitcher</h4>
         <p style={styles.helperText}>
           Tap once when your team finishes the pitcher. First finish gets 0, then +1, +2, and so on.
         </p>
@@ -179,32 +181,45 @@ export default function PitcherRaceSection({
       </section>
 
       <section style={styles.resultsPanel}>
-        <h3 style={styles.heading}>Finish leaderboard</h3>
+        <div style={styles.resultsHeader}>
+          <h3 style={styles.heading}>Results</h3>
+          <button
+            type="button"
+            onClick={() => setShowResults((current) => !current)}
+            style={styles.secondaryButton}
+          >
+            {showResults ? 'Hide results' : 'Show results'}
+          </button>
+        </div>
 
-        {loading ? (
-          <p style={styles.muted}>Loading...</p>
-        ) : (
-          <div style={styles.table}>
-            <div style={styles.tableHeader}>
-              <span>Rank</span>
-              <span>Team</span>
-              <span>Time</span>
-              <span>Score</span>
-            </div>
-
-            {leaderboard.map((row) => (
-              <div key={row.id} style={styles.tableRow}>
-                <span style={styles.rankCell}>#{row.rankScore + 1}</span>
-                <span style={styles.teamCell}>{row.teamLabel}</span>
-                <span style={styles.timeCell}>{new Date(row.finished_at).toLocaleTimeString()}</span>
-                <span style={styles.scoreCell}>{row.rankScore}</span>
+        {showResults ? (
+          loading ? (
+            <p style={styles.muted}>Loading...</p>
+          ) : (
+            <div style={styles.table}>
+              <div style={styles.tableHeader}>
+                <span>Rank</span>
+                <span>Team</span>
+                <span>Time</span>
+                <span>Score</span>
               </div>
-            ))}
 
-            {!leaderboard.length ? (
-              <div style={styles.emptyRow}>No finishes yet. Use the button above to record the first finish.</div>
-            ) : null}
-          </div>
+              {leaderboard.map((row) => (
+                <div key={row.id} style={styles.tableRow}>
+                  <span style={styles.rankCell}>#{row.rankScore + 1}</span>
+                  <span style={styles.teamCell}>{row.teamLabel}</span>
+                  <span style={styles.timeCell}>{new Date(row.finished_at).toLocaleTimeString()}</span>
+                  <span style={styles.scoreCell}>{row.rankScore}</span>
+                </div>
+              ))}
+
+              {!leaderboard.length ? (
+                <div style={styles.emptyRow}>No finishes yet. Use the button above to record the first finish.</div>
+              ) : null}
+            </div>
+          )
+        ) : (
+          <p style={styles.helperCopy}>Show results to view finish order and scores.</p>
         )}
       </section>
 
@@ -215,12 +230,17 @@ export default function PitcherRaceSection({
 }
 
 const styles = {
-  wrap: { marginTop: 8, display: 'grid', gap: 10 },
+  wrap: { marginTop: 6, display: 'grid', gap: 12 },
   actionBlock: {
     display: 'grid',
     gap: 8,
-    padding: 8,
-    borderBottom: '1px solid #dde6de',
+    paddingTop: 4,
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: '0.95rem',
+    color: '#1f3027',
+    fontWeight: 800,
   },
   helperText: {
     margin: 0,
@@ -253,25 +273,32 @@ const styles = {
     fontWeight: 800,
   },
   secondaryButton: {
-    padding: '11px 14px',
-    minHeight: 44,
+    padding: 0,
+    minHeight: 0,
     borderRadius: 11,
-    border: '1px solid #ced8d0',
-    background: '#fff',
+    border: 'none',
+    background: 'transparent',
     color: '#294637',
     fontWeight: 700,
+    fontSize: '0.84rem',
   },
   resultsPanel: {
     display: 'grid',
     gap: 8,
-    padding: 8,
+    borderTop: '1px solid #e4ece6',
+    paddingTop: 10,
+  },
+  resultsHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 10,
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   heading: {
     margin: 0,
-    fontSize: '0.95rem',
+    fontSize: '0.92rem',
     color: '#194c31',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
     fontWeight: 800,
   },
   table: {
@@ -319,6 +346,11 @@ const styles = {
     color: '#666',
     fontSize: '0.88rem',
     paddingTop: 6,
+  },
+  helperCopy: {
+    margin: 0,
+    color: '#5f6e65',
+    fontSize: '0.84rem',
   },
   success: {
     color: '#17663a',

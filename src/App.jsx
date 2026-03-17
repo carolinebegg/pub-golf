@@ -330,7 +330,7 @@ export default function App() {
         <div className="app-content">
           <header className="app-header">
             <div>
-              <h1 className="app-title">⛳ Pub Golf</h1>
+              <h1 className="app-title">⛳ Pub Golf: The SQL ☘️</h1>
               <p className="app-subtitle">Track scores, keg stands, pitcher races, and the overall leaderboard.</p>
             </div>
 

@@ -46,7 +46,12 @@ export default function HoleCard({
           </div>
 
           <div style={styles.rightBlock}>
-            <span style={styles.holeTypeBadge}>
+            <span
+              style={{
+                ...styles.holeTypeBadge,
+                ...typeDisplay.badgeStyle,
+              }}
+            >
               {typeDisplay.typeLabel}
             </span>
           </div>
@@ -88,8 +93,35 @@ export default function HoleCard({
 }
 
 function getHoleTypeDisplay(holeType) {
+  if (holeType === 'keg_stand') {
+    return {
+      typeLabel: getHoleTypeLabel(holeType),
+      badgeStyle: {
+        background: '#f8f1dc',
+        color: '#6f5720',
+        borderColor: '#dfcf9f',
+      },
+    }
+  }
+
+  if (holeType === 'pitcher') {
+    return {
+      typeLabel: getHoleTypeLabel(holeType),
+      badgeStyle: {
+        background: '#edf2ff',
+        color: '#284f92',
+        borderColor: '#c9d6f7',
+      },
+    }
+  }
+
   return {
     typeLabel: getHoleTypeLabel(holeType),
+    badgeStyle: {
+      background: '#eaf5ee',
+      color: '#1f5a3a',
+      borderColor: '#cce0d0',
+    },
   }
 }
 
@@ -154,9 +186,8 @@ const styles = {
     fontWeight: 800,
   },
   holeTypeBadge: {
-    border: '1px solid #d6dfd7',
-    background: '#f4f8f4',
-    color: '#335246',
+    borderWidth: 1,
+    borderStyle: 'solid',
     borderRadius: 999,
     padding: '5px 10px',
     fontSize: '0.76rem',
@@ -196,9 +227,9 @@ const styles = {
     color: '#1f5a3a',
   },
   statusBadgeInProgress: {
-    background: '#f0f5f1',
-    borderColor: '#d8e1da',
-    color: '#2d4d3c',
+    background: '#edf2ff',
+    borderColor: '#c9d6f7',
+    color: '#284f92',
   },
   statusBadgeNotStarted: {
     background: '#f6f7f6',
