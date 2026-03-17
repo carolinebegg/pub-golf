@@ -3,6 +3,7 @@ import StandardHoleForm from './StandardHoleForm'
 import KegStandSection from './KegStandSection'
 import PitcherRaceSection from './PitcherRaceSection'
 import LeaderboardCard from './LeaderboardCard'
+import PrimaryActionButton from './PrimaryActionButton'
 import { supabase } from '../lib/supabase'
 import {
   calculateStandardHoleScore,
@@ -134,11 +135,6 @@ export default function HoleDetailsModal({
 
           {selectedTeam && isGuinnessHole ? (
             <section className="hole-detail-section">
-              <h4 className="hole-detail-section-title">Split the G</h4>
-              <p className="hole-detail-section-copy">
-                These Guinness holes use split-the-G voting instead of normal sips scoring. Cast
-                your vote for the best and worst split across the field.
-              </p>
               <GuinnessVotingForm
                 hole={hole}
                 votingTeam={selectedTeam}
@@ -290,6 +286,13 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
     [holeVotes, allTeams],
   )
 
+  const hasVote =
+    Boolean(
+      existingVote &&
+        ((existingVote.best_voted_member_name && existingVote.best_voted_team_id) ||
+          (existingVote.worst_voted_member_name && existingVote.worst_voted_team_id)),
+    )
+
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
@@ -334,6 +337,35 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
 
     setSaving(false)
     setMessage('Votes saved.')
+
+    if (onChanged) {
+      await onChanged()
+    }
+  }
+
+  async function handleReset() {
+    if (!hole?.id || !votingTeam?.id || !hasVote) return
+
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    const { error: deleteError } = await supabase
+      .from('guinness_split_votes')
+      .delete()
+      .eq('hole_id', hole.id)
+      .eq('voting_team_id', votingTeam.id)
+
+    if (deleteError) {
+      setError(deleteError.message || 'Failed to remove votes.')
+      setSaving(false)
+      return
+    }
+
+    setBestSelection('')
+    setWorstSelection('')
+    setSaving(false)
+    setMessage('Votes removed. You can vote again.')
 
     if (onChanged) {
       await onChanged()
@@ -388,22 +420,13 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
           marginTop: 16,
         }}
       >
-        <button
+        <PrimaryActionButton
           type="submit"
-          disabled={saving}
-          style={{
-            padding: '13px 18px',
-            minHeight: 48,
-            minWidth: 170,
-            borderRadius: 12,
-            border: 'none',
-            background: 'var(--green-600)',
-            color: '#fff',
-            fontWeight: 800,
-          }}
-        >
-          {saving ? 'Saving...' : message ? 'Vote submitted' : 'Submit vote'}
-        </button>
+          disabled={hasVote}
+          isLoading={saving}
+          label={hasVote ? 'Vote submitted' : 'Submit vote'}
+          loadingLabel="Saving..."
+        />
 
         <button
           type="button"
@@ -425,10 +448,37 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
         </button>
       </div>
 
+      {hasVote ? (
+        <div style={{ marginTop: 8, textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => {
+              void handleReset()
+            }}
+            disabled={saving}
+            style={{
+              padding: 0,
+              minHeight: 0,
+              border: 'none',
+              background: 'transparent',
+              color: '#294637',
+              fontWeight: 700,
+              fontSize: '0.84rem',
+              cursor: saving ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {saving ? 'Working...' : 'Change my vote'}
+          </button>
+        </div>
+      ) : null}
+
       {error ? <p className="team-error">{error}</p> : null}
 
       {showLeaderboards ? (
-        <div className="hole-detail-section" style={{ paddingTop: 24 }}>
+        <div
+          className="hole-detail-section"
+          style={{ paddingTop: 24, borderTop: 'none' }}
+        >
           <div
             style={{
               display: 'grid',

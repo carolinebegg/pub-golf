@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { buildPitcherLeaderboard } from '../lib/helpers'
 import LeaderboardCard from './LeaderboardCard'
+import PrimaryActionButton from './PrimaryActionButton'
 
 export default function PitcherRaceSection({
   hole,
@@ -16,7 +17,6 @@ export default function PitcherRaceSection({
   const [showResults, setShowResults] = useState(false)
   const [myFinish, setMyFinish] = useState(pitcherFinish)
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
   const canViewLeaderboard = Boolean(myFinish)
 
   useEffect(() => {
@@ -24,7 +24,6 @@ export default function PitcherRaceSection({
     setShowResults(false)
     setLoading(false)
     setError('')
-    setMessage('')
   }, [hole?.id, team?.id, pitcherFinish])
 
   async function markFinished() {
@@ -40,7 +39,6 @@ export default function PitcherRaceSection({
 
     setSaving(true)
     setError('')
-    setMessage('')
 
     const finishedAt = new Date().toISOString()
 
@@ -68,7 +66,6 @@ export default function PitcherRaceSection({
       team_id: team.id,
       finished_at: finishedAt,
     })
-    setMessage('Pitcher finish recorded.')
 
     setSaving(false)
 
@@ -80,12 +77,8 @@ export default function PitcherRaceSection({
   async function resetFinish() {
     if (!hole?.id || !team?.id || !myFinish) return
 
-    const confirmed = window.confirm('Reset your team finish so it can be submitted again?')
-    if (!confirmed) return
-
     setSaving(true)
     setError('')
-    setMessage('')
 
     const { error: deleteError } = await supabase
       .from('pitcher_finishes')
@@ -101,8 +94,6 @@ export default function PitcherRaceSection({
 
     setMyFinish(null)
     setShowResults(false)
-    setFinishes([])
-    setMessage('Finish reset. You can record it again.')
 
     setSaving(false)
 
@@ -146,14 +137,14 @@ export default function PitcherRaceSection({
         ) : null}
 
         <div style={styles.buttonRow}>
-          <button
+          <PrimaryActionButton
             type="button"
             onClick={markFinished}
-            disabled={saving || Boolean(myFinish)}
-            style={styles.button}
-          >
-            {saving ? 'Saving...' : myFinish ? 'Finish recorded' : 'Finish pitcher'}
-          </button>
+            disabled={Boolean(myFinish)}
+            isLoading={saving}
+            label={myFinish ? 'Finish recorded' : 'Finish pitcher'}
+            loadingLabel="Saving..."
+          />
 
           <button
             type="button"
@@ -166,7 +157,7 @@ export default function PitcherRaceSection({
               void toggleResults()
             }}
           >
-            {showResults ? '🏆 Hide leaderboard' : '🏆 Leaderboard'}
+            {showResults ? 'Hide leaderboard' : '🏆 Leaderboard'}
           </button>
         </div>
 
@@ -211,7 +202,6 @@ export default function PitcherRaceSection({
         />
       )}
 
-      {message ? <p style={styles.success}>{message}</p> : null}
       {error ? <p style={styles.error}>{error}</p> : null}
     </div>
   )
@@ -271,7 +261,7 @@ const styles = {
     cursor: 'pointer',
   },
   leaderboardBtnDisabled: {
-    borderColor: '#ccd6ce',
+    border: '1.5px solid #ccd6ce',
     background: '#f3f5f3',
     color: '#97a29a',
     cursor: 'not-allowed',
