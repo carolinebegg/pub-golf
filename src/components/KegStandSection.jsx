@@ -1,62 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import {
-  buildKegStandTeamLeaderboard,
-  formatSeconds,
-} from '../lib/helpers'
+import { buildKegStandTeamLeaderboard, formatSeconds } from '../lib/helpers'
+import LeaderboardCard from './LeaderboardCard'
 
 export default function KegStandSection({
   hole,
   team,
   allTeams = [],
+  entriesForHole = [],
   onChanged,
 }) {
   const [memberName, setMemberName] = useState('')
   const [seconds, setSeconds] = useState('')
   const [editingEntryId, setEditingEntryId] = useState(null)
 
-  const [entries, setEntries] = useState([])
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
-  const [loading, setLoading] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-
-  const loadEntriesForHole = useCallback(async (holeIdParam = hole?.id) => {
-    if (!holeIdParam) return
-
-    setLoading(true)
-    setError('')
-
-    const { data, error: loadError } = await supabase
-      .from('keg_stand_entries')
-      .select('*')
-      .eq('hole_id', holeIdParam)
-      .order('seconds', { ascending: false })
-      .order('created_at', { ascending: true })
-
-    if (loadError) {
-      setError(loadError.message)
-      setLoading(false)
-      return
-    }
-
-    setEntries(data || [])
-    setLoading(false)
-  }, [hole?.id])
-
-  useEffect(() => {
-    if (!hole?.id) return
-
-    const loadTimer = window.setTimeout(() => {
-      void loadEntriesForHole(hole.id)
-    }, 0)
-
-    return () => {
-      window.clearTimeout(loadTimer)
-    }
-  }, [hole, loadEntriesForHole])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -104,7 +66,6 @@ export default function KegStandSection({
     setEditingEntryId(null)
     setMessage(editingEntryId ? 'Keg stand updated.' : 'Keg stand added.')
 
-    await loadEntriesForHole()
     setSaving(false)
 
     if (onChanged) {
@@ -152,7 +113,6 @@ export default function KegStandSection({
     }
 
     setMessage('Keg stand entry deleted.')
-    await loadEntriesForHole()
     setDeletingId(null)
 
     if (onChanged) {
@@ -161,7 +121,7 @@ export default function KegStandSection({
   }
 
   const enrichedEntries = useMemo(() => {
-    return entries.map((entry) => {
+    return entriesForHole.map((entry) => {
       const entryTeam = allTeams.find((t) => t.id === entry.team_id)
       return {
         ...entry,
@@ -170,14 +130,14 @@ export default function KegStandSection({
           : 'Unknown team',
       }
     })
-  }, [entries, allTeams])
+  }, [entriesForHole, allTeams])
 
   const teamEntries = useMemo(() => {
     return enrichedEntries.filter((entry) => entry.team_id === team.id)
   }, [enrichedEntries, team.id])
 
   const teamLeaderboard = useMemo(() => {
-    return buildKegStandTeamLeaderboard(entries).map((row) => {
+    return buildKegStandTeamLeaderboard(entriesForHole).map((row) => {
       const t = allTeams.find((teamRow) => teamRow.id === row.team_id)
       return {
         ...row,
@@ -186,7 +146,7 @@ export default function KegStandSection({
           : 'Unknown team',
       }
     })
-  }, [entries, allTeams])
+  }, [entriesForHole, allTeams])
 
   return (
     <div style={styles.wrap}>
@@ -282,44 +242,50 @@ export default function KegStandSection({
       </div>
 
       {showLeaderboard && (
-        <div style={styles.leaderboardCard}>
-          <div style={styles.leaderboardSectionHeader}>Individual times</div>
-          {loading ? (
-            <div style={styles.leaderboardEmpty}>Loading...</div>
-          ) : enrichedEntries.length === 0 ? (
-            <div style={styles.leaderboardEmpty}>No entries yet.</div>
-          ) : (
-            enrichedEntries.map((entry, index) => (
-              <div key={entry.id} style={styles.leaderboardRow}>
-                <span style={styles.leaderboardRank}>
-                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                </span>
-                <div style={styles.leaderboardInfo}>
-                  <span style={styles.leaderboardName}>{entry.member_name}</span>
-                  <span style={styles.leaderboardMeta}>{entry.teamLabel}</span>
-                </div>
-                <span style={styles.leaderboardStat}>{formatSeconds(entry.seconds)}</span>
-              </div>
-            ))
-          )}
-          <div style={styles.leaderboardSectionHeader}>Team scores</div>
-          {teamLeaderboard.length === 0 ? (
-            <div style={styles.leaderboardEmpty}>No team results yet.</div>
-          ) : (
-            teamLeaderboard.map((row, index) => (
-              <div key={row.team_id} style={styles.leaderboardRow}>
-                <span style={styles.leaderboardRank}>
-                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                </span>
-                <div style={styles.leaderboardInfo}>
-                  <span style={styles.leaderboardName}>{row.teamLabel}</span>
-                  <span style={styles.leaderboardMeta}>{formatSeconds(row.average)}</span>
-                </div>
-                <span style={styles.leaderboardStat}>+{row.rankScore}</span>
-              </div>
-            ))
-          )}
-        </div>
+        <LeaderboardCard
+          sections={[
+            {
+              id: 'individual',
+              title: 'Individual times',
+              loading: false,
+              rows: enrichedEntries,
+              emptyText: 'No entries yet.',
+              getKey: (entry) => entry.id,
+              renderRow: (entry, index) => (
+                <>
+                  <span style={styles.leaderboardRank}>
+                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                  </span>
+                  <div style={styles.leaderboardInfo}>
+                    <span style={styles.leaderboardName}>{entry.member_name}</span>
+                    <span style={styles.leaderboardMeta}>{entry.teamLabel}</span>
+                  </div>
+                  <span style={styles.leaderboardStat}>{formatSeconds(entry.seconds)}</span>
+                </>
+              ),
+            },
+            {
+              id: 'teams',
+              title: 'Team scores',
+              loading: false,
+              rows: teamLeaderboard,
+              emptyText: 'No team results yet.',
+              getKey: (row) => row.team_id,
+              renderRow: (row, index) => (
+                <>
+                  <span style={styles.leaderboardRank}>
+                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                  </span>
+                  <div style={styles.leaderboardInfo}>
+                    <span style={styles.leaderboardName}>{row.teamLabel}</span>
+                    <span style={styles.leaderboardMeta}>{formatSeconds(row.average)}</span>
+                  </div>
+                  <span style={styles.leaderboardStat}>+{row.rankScore}</span>
+                </>
+              ),
+            },
+          ]}
+        />
       )}
 
       {message ? <p style={styles.success}>{message}</p> : null}
@@ -437,28 +403,6 @@ const styles = {
     fontWeight: 800,
     fontSize: '0.95rem',
     cursor: 'pointer',
-  },
-  leaderboardCard: {
-    border: '1.5px solid #b8d9c4',
-    borderRadius: 12,
-    overflow: 'hidden',
-    background: '#f6fbf7',
-  },
-  leaderboardSectionHeader: {
-    background: '#2d6a4a',
-    color: '#fff',
-    padding: '6px 14px',
-    fontSize: '0.74rem',
-    fontWeight: 800,
-    textTransform: 'uppercase',
-    letterSpacing: '0.07em',
-  },
-  leaderboardRow: {
-    display: 'flex',
-    gap: 10,
-    alignItems: 'center',
-    padding: '9px 14px',
-    borderTop: '1px solid #e3ede6',
   },
   leaderboardRank: {
     fontSize: '1.1rem',

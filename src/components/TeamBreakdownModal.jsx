@@ -134,6 +134,22 @@ function renderHoleDetails(hole) {
   }
 
   const details = hole.details || {}
+
+  if (hole.holeType === 'standard' && details.is_bunker_hazard) {
+    const who = details.drinker_name || 'Someone'
+    const shot = details.drink_name || 'bunker hazard shot'
+    const extras = []
+
+    if (details.notes) {
+      const cleanNotes = stripAdjustmentTokens(details.notes)
+      if (cleanNotes) extras.push(cleanNotes)
+    }
+
+    const base = `Bunker hazard: ${who} (${shot})`
+    if (!extras.length) return base
+
+    return `${base} • ${extras.join(' • ')}`
+  }
   const bits = []
   const rawNotes = typeof details.notes === 'string' ? details.notes : ''
 
