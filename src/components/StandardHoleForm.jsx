@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { calculateStandardHoleScore, formatCurrency } from '../lib/helpers'
 
@@ -14,8 +14,14 @@ function getInitialFormState(existingScore) {
     spilledDrink: existingScore?.spilled_drink ?? false,
     threwUp: existingScore?.threw_up ?? false,
     photoboothMissing: existingScore?.photobooth_missing ?? false,
-    splitGBonus: existingScore?.split_g_bonus ?? 0,
-    bonusPenalty: existingScore?.bonus_penalty ?? 0,
+    splitGBonus:
+      existingScore?.split_g_bonus === 0 || existingScore?.split_g_bonus
+        ? String(existingScore.split_g_bonus)
+        : '',
+    bonusPenalty:
+      existingScore?.bonus_penalty === 0 || existingScore?.bonus_penalty
+        ? String(existingScore.bonus_penalty)
+        : '',
     notes: existingScore?.notes ?? '',
   }
 }
@@ -26,17 +32,14 @@ export default function StandardHoleForm({
   existingScore = null,
   onChanged,
 }) {
-  const [form, setForm] = useState(getInitialFormState(existingScore))
+  const [form, setForm] = useState(() => getInitialFormState(existingScore))
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    setForm(getInitialFormState(existingScore))
-    setMessage('')
-    setError('')
-  }, [existingScore?.id, hole?.id, team?.id])
+  const [showAdjustments, setShowAdjustments] = useState(
+    Boolean(existingScore?.split_g_bonus || existingScore?.bonus_penalty)
+  )
 
   const computedPreviewScore = useMemo(() => {
     return calculateStandardHoleScore({
@@ -58,11 +61,17 @@ export default function StandardHoleForm({
     }))
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  async function handleSubmit(event) {
+    event.preventDefault()
 
     if (!hole?.id || !team?.id) {
       setError('Missing hole or team.')
+      return
+    }
+
+    const parsedSips = Number(form.sips)
+    if (!Number.isFinite(parsedSips) || parsedSips < 0) {
+      setError('Enter a valid sip count (0 or more).')
       return
     }
 
@@ -74,7 +83,7 @@ export default function StandardHoleForm({
       team_id: team.id,
       hole_id: hole.id,
       drink_name: form.drinkName.trim() || null,
-      sips: Number(form.sips || 0),
+      sips: parsedSips,
       is_guinness: Boolean(form.isGuinness),
       paid_by: form.paidBy || null,
       price: form.price === '' ? null : Number(form.price),
@@ -140,147 +149,201 @@ export default function StandardHoleForm({
 
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
-      <div style={styles.headerRow}>
-        <div>
-          <strong>{hole.bar_name}</strong>
-          <div style={styles.muted}>Playing as {team.name}</div>
+      <section style={styles.previewCard}>
+        <div style={styles.previewHeader}>
+          <strong>Score preview</strong>
+          <span style={styles.previewValue}>{computedPreviewScore ?? '-'}</span>
         </div>
-        <div style={styles.scorePill}>Preview score: {computedPreviewScore ?? '—'}</div>
-      </div>
+        <p style={styles.previewHelp}>
+          Starts with sips, then penalties and bonuses are applied automatically.
+        </p>
+      </section>
 
-      <input
-        placeholder="Drink name"
-        value={form.drinkName}
-        onChange={(e) => updateField('drinkName', e.target.value)}
-        style={styles.input}
-      />
+      <section style={styles.groupCard}>
+        <h5 style={styles.groupTitle}>Drink info</h5>
 
-      <input
-        placeholder="Number of sips"
-        type="number"
-        min="0"
-        value={form.sips}
-        onChange={(e) => updateField('sips', e.target.value)}
-        style={styles.input}
-      />
+        <label style={styles.field}>
+          <span style={styles.label}>Drink name <em style={styles.optionalTag}>(optional)</em></span>
+          <input
+            value={form.drinkName}
+            onChange={(e) => updateField('drinkName', e.target.value)}
+            style={styles.input}
+            placeholder="Example: Guinness"
+          />
+        </label>
 
-      <label style={styles.checkboxRow}>
-        <input
-          type="checkbox"
-          checked={form.isGuinness}
-          onChange={(e) => updateField('isGuinness', e.target.checked)}
-        />
-        Guinness (-1)
-      </label>
+        <label style={styles.field}>
+          <span style={styles.label}>Number of sips <em style={styles.requiredTag}>(required)</em></span>
+          <input
+            type="number"
+            min="0"
+            required
+            value={form.sips}
+            onChange={(e) => updateField('sips', e.target.value)}
+            style={styles.input}
+            placeholder="0"
+          />
+        </label>
 
-      <select
-        value={form.paidBy}
-        onChange={(e) => updateField('paidBy', e.target.value)}
-        style={styles.input}
-      >
-        <option value="">Who paid?</option>
-        {team.members?.map((member) => (
-          <option key={member} value={member}>
-            {member}
-          </option>
-        ))}
-      </select>
-
-      <input
-        placeholder="Price"
-        type="number"
-        min="0"
-        step="0.01"
-        value={form.price}
-        onChange={(e) => updateField('price', e.target.value)}
-        style={styles.input}
-      />
-
-      {form.price !== '' && Number(form.price) >= 0 && (
-        <div style={styles.muted}>Price: {formatCurrency(form.price)}</div>
-      )}
-
-      {hole.has_bunker && (
         <label style={styles.checkboxRow}>
           <input
             type="checkbox"
-            checked={form.bunkerCompleted}
-            onChange={(e) => updateField('bunkerCompleted', e.target.checked)}
+            checked={form.isGuinness}
+            onChange={(e) => updateField('isGuinness', e.target.checked)}
           />
-          Bunker completed
+          Guinness bonus (minus 1)
         </label>
-      )}
+      </section>
 
-      {hole.has_water && (
+      <section style={styles.groupCard}>
+        <h5 style={styles.groupTitle}>Payment info</h5>
+
+        <label style={styles.field}>
+          <span style={styles.label}>Who paid <em style={styles.optionalTag}>(optional)</em></span>
+          <select
+            value={form.paidBy}
+            onChange={(e) => updateField('paidBy', e.target.value)}
+            style={styles.input}
+          >
+            <option value="">No payer selected</option>
+            {team.members?.map((member) => (
+              <option key={member} value={member}>
+                {member}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={styles.field}>
+          <span style={styles.label}>Price <em style={styles.optionalTag}>(optional)</em></span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.price}
+            onChange={(e) => updateField('price', e.target.value)}
+            style={styles.input}
+            placeholder="0.00"
+          />
+        </label>
+
+        {form.price !== '' && Number(form.price) >= 0 ? (
+          <div style={styles.inlineNote}>Price preview: {formatCurrency(form.price)}</div>
+        ) : null}
+      </section>
+
+      <section style={styles.groupCard}>
+        <h5 style={styles.groupTitle}>Penalties and bonuses</h5>
+
+        {hole.has_bunker ? (
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.bunkerCompleted}
+              onChange={(e) => updateField('bunkerCompleted', e.target.checked)}
+            />
+            Bunker completed
+          </label>
+        ) : null}
+
+        {hole.has_water ? (
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.waterViolated}
+              onChange={(e) => updateField('waterViolated', e.target.checked)}
+            />
+            Water violated / peed (plus 3)
+          </label>
+        ) : null}
+
         <label style={styles.checkboxRow}>
           <input
             type="checkbox"
-            checked={form.waterViolated}
-            onChange={(e) => updateField('waterViolated', e.target.checked)}
+            checked={form.spilledDrink}
+            onChange={(e) => updateField('spilledDrink', e.target.checked)}
           />
-          Water violated / peed (+3)
+          Spilled drink (plus 1)
         </label>
-      )}
 
-      <label style={styles.checkboxRow}>
-        <input
-          type="checkbox"
-          checked={form.spilledDrink}
-          onChange={(e) => updateField('spilledDrink', e.target.checked)}
-        />
-        Spilled drink (+1)
-      </label>
-
-      <label style={styles.checkboxRow}>
-        <input
-          type="checkbox"
-          checked={form.threwUp}
-          onChange={(e) => updateField('threwUp', e.target.checked)}
-        />
-        Threw up (+5)
-      </label>
-
-      {hole.bar_name === 'Tapster' && (
         <label style={styles.checkboxRow}>
           <input
             type="checkbox"
-            checked={form.photoboothMissing}
-            onChange={(e) => updateField('photoboothMissing', e.target.checked)}
+            checked={form.threwUp}
+            onChange={(e) => updateField('threwUp', e.target.checked)}
           />
-          No photobooth proof (+2)
+          Threw up (plus 5)
         </label>
-      )}
 
-      <input
-        placeholder="Split the G bonus"
-        type="number"
-        value={form.splitGBonus}
-        onChange={(e) => updateField('splitGBonus', e.target.value)}
-        style={styles.input}
-      />
+        {hole.bar_name === 'Tapster' ? (
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.photoboothMissing}
+              onChange={(e) => updateField('photoboothMissing', e.target.checked)}
+            />
+            No photobooth proof (plus 2)
+          </label>
+        ) : null}
 
-      <input
-        placeholder="Extra bonus / penalty"
-        type="number"
-        value={form.bonusPenalty}
-        onChange={(e) => updateField('bonusPenalty', e.target.value)}
-        style={styles.input}
-      />
+        <button
+          type="button"
+          style={styles.revealButton}
+          onClick={() => setShowAdjustments((current) => !current)}
+        >
+          {showAdjustments ? 'Hide manual adjustments' : 'Show manual adjustments'}
+        </button>
 
-      <textarea
-        placeholder="Notes"
-        value={form.notes}
-        onChange={(e) => updateField('notes', e.target.value)}
-        style={styles.textarea}
-        rows={3}
-      />
+        {showAdjustments ? (
+          <div style={styles.adjustmentGrid}>
+            <label style={styles.field}>
+              <span style={styles.label}>Split the G bonus</span>
+              <input
+                type="number"
+                value={form.splitGBonus}
+                onChange={(e) => updateField('splitGBonus', e.target.value)}
+                style={styles.input}
+                placeholder="Optional"
+              />
+              <small style={styles.helperText}>Use a positive number to subtract points.</small>
+            </label>
+
+            <label style={styles.field}>
+              <span style={styles.label}>Manual adjustment</span>
+              <input
+                type="number"
+                value={form.bonusPenalty}
+                onChange={(e) => updateField('bonusPenalty', e.target.value)}
+                style={styles.input}
+                placeholder="Optional"
+              />
+              <small style={styles.helperText}>Use plus or minus values as needed.</small>
+            </label>
+          </div>
+        ) : null}
+      </section>
+
+      <section style={styles.groupCard}>
+        <h5 style={styles.groupTitle}>Notes</h5>
+
+        <label style={styles.field}>
+          <span style={styles.label}>Extra notes <em style={styles.optionalTag}>(optional)</em></span>
+          <textarea
+            value={form.notes}
+            onChange={(e) => updateField('notes', e.target.value)}
+            style={styles.textarea}
+            rows={3}
+            placeholder="Anything important about this hole"
+          />
+        </label>
+      </section>
 
       <div style={styles.buttonRow}>
         <button type="submit" disabled={saving} style={styles.button}>
           {saving ? 'Saving...' : existingScore ? 'Update score' : 'Save score'}
         </button>
 
-        {existingScore && (
+        {existingScore ? (
           <button
             type="button"
             disabled={deleting}
@@ -289,7 +352,7 @@ export default function StandardHoleForm({
           >
             {deleting ? 'Deleting...' : 'Delete'}
           </button>
-        )}
+        ) : null}
       </div>
 
       {message ? <p style={styles.success}>{message}</p> : null}
@@ -301,37 +364,80 @@ export default function StandardHoleForm({
 const styles = {
   form: {
     display: 'grid',
-    gap: 9,
-    marginTop: 12,
+    gap: 10,
+    marginTop: 10,
   },
-  headerRow: {
+  previewCard: {
+    border: '1px solid #dbe5dd',
+    borderRadius: 12,
+    background: '#f5faf6',
+    padding: 12,
+  },
+  previewHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 10,
     flexWrap: 'wrap',
   },
-  scorePill: {
-    padding: '7px 11px',
-    borderRadius: 999,
-    background: '#f3f8f4',
-    border: '1px solid #d4dfd6',
-    fontSize: 13,
-    fontWeight: 700,
+  previewValue: {
+    fontSize: '1rem',
+    fontWeight: 800,
     color: '#1f5c3b',
   },
+  previewHelp: {
+    marginTop: 6,
+    color: '#576960',
+    fontSize: '0.88rem',
+    lineHeight: 1.35,
+  },
+  groupCard: {
+    border: '1px solid #dfe7df',
+    borderRadius: 12,
+    background: '#fff',
+    padding: 12,
+    display: 'grid',
+    gap: 9,
+  },
+  groupTitle: {
+    margin: 0,
+    fontSize: '0.84rem',
+    color: '#5f7067',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    fontWeight: 800,
+  },
+  field: {
+    display: 'grid',
+    gap: 6,
+  },
+  label: {
+    fontSize: '0.9rem',
+    color: '#1f3027',
+    fontWeight: 700,
+  },
+  requiredTag: {
+    fontStyle: 'normal',
+    color: '#1a5c3a',
+    fontWeight: 700,
+  },
+  optionalTag: {
+    fontStyle: 'normal',
+    color: '#72847b',
+    fontWeight: 600,
+  },
   input: {
-    padding: 11,
-    borderRadius: 11,
-    border: '1px solid #ccd6ce',
-    fontSize: 16,
+    padding: 10,
+    borderRadius: 10,
+    border: '1px solid #cdd7cf',
+    fontSize: 15,
     background: '#fff',
   },
   textarea: {
-    padding: 11,
-    borderRadius: 11,
-    border: '1px solid #ccd6ce',
-    fontSize: 16,
+    padding: 10,
+    borderRadius: 10,
+    border: '1px solid #cdd7cf',
+    fontSize: 15,
     resize: 'vertical',
     background: '#fff',
   },
@@ -340,7 +446,30 @@ const styles = {
     gap: 8,
     alignItems: 'center',
     color: '#31493c',
-    fontSize: '0.94rem',
+    fontSize: '0.9rem',
+  },
+  revealButton: {
+    justifySelf: 'start',
+    border: '1px solid #cad7cc',
+    background: '#fff',
+    color: '#1f5c3b',
+    fontWeight: 700,
+    borderRadius: 10,
+    padding: '8px 10px',
+    cursor: 'pointer',
+    fontSize: '0.84rem',
+  },
+  adjustmentGrid: {
+    display: 'grid',
+    gap: 8,
+  },
+  helperText: {
+    color: '#6a7a71',
+    fontSize: '0.8rem',
+  },
+  inlineNote: {
+    color: '#5f6e65',
+    fontSize: 13,
   },
   buttonRow: {
     display: 'flex',
@@ -363,16 +492,14 @@ const styles = {
     color: '#8a1f1f',
     fontWeight: 700,
   },
-  muted: {
-    color: '#5f6e65',
-    fontSize: 13,
-  },
   success: {
     color: '#17663a',
     margin: 0,
+    fontWeight: 700,
   },
   error: {
     color: '#a12626',
     margin: 0,
+    fontWeight: 700,
   },
 }

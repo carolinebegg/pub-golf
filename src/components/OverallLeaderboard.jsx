@@ -71,9 +71,6 @@ export default function OverallLeaderboard({
                 <div style={styles.teamBlock}>
                   <h3 style={styles.teamName}>{formatTeamTitle(team)}</h3>
                   <p style={styles.memberLine}>{formatMembers(team.members)}</p>
-                  <p style={styles.teamMeta}>
-                    {team.teamNumber ? `Team ${team.teamNumber}` : 'Team'}
-                  </p>
                 </div>
 
                 <div style={styles.scoreBlock}>
@@ -196,13 +193,6 @@ const styles = {
     color: 'var(--text-secondary)',
     fontSize: '0.9rem',
     lineHeight: 1.3,
-  },
-  teamMeta: {
-    color: '#6e7a70',
-    margin: '4px 0 0',
-    fontSize: '0.78rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
   },
   scoreBlock: {
     textAlign: 'right',

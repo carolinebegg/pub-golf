@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   buildKegStandTeamLeaderboard,
@@ -24,20 +24,16 @@ export default function KegStandSection({
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
-  useEffect(() => {
-    if (hole?.id) {
-      loadEntries()
-    }
-  }, [hole?.id])
+  const loadEntriesForHole = useCallback(async (holeIdParam = hole?.id) => {
+    if (!holeIdParam) return
 
-  async function loadEntries() {
     setLoading(true)
     setError('')
 
     const { data, error: loadError } = await supabase
       .from('keg_stand_entries')
       .select('*')
-      .eq('hole_id', hole.id)
+      .eq('hole_id', holeIdParam)
       .order('seconds', { ascending: false })
       .order('created_at', { ascending: true })
 
@@ -49,7 +45,19 @@ export default function KegStandSection({
 
     setEntries(data || [])
     setLoading(false)
-  }
+  }, [hole])
+
+  useEffect(() => {
+    if (!hole?.id) return
+
+    const loadTimer = window.setTimeout(() => {
+      void loadEntriesForHole(hole.id)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(loadTimer)
+    }
+  }, [hole, loadEntriesForHole])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -97,7 +105,7 @@ export default function KegStandSection({
     setEditingEntryId(null)
     setMessage(editingEntryId ? 'Keg stand updated.' : 'Keg stand added.')
 
-    await loadEntries()
+    await loadEntriesForHole()
     setSaving(false)
 
     if (onChanged) {
@@ -145,7 +153,7 @@ export default function KegStandSection({
     }
 
     setMessage('Keg stand entry deleted.')
-    await loadEntries()
+    await loadEntriesForHole()
     setDeletingId(null)
 
     if (onChanged) {
@@ -187,54 +195,62 @@ export default function KegStandSection({
 
   return (
     <div style={styles.wrap}>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <div style={styles.sectionTitle}>
-          {editingEntryId ? 'Edit keg stand' : 'Add keg stand'}
-        </div>
+      <section style={styles.panel}>
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <div style={styles.sectionTitle}>
+            {editingEntryId ? 'Edit keg stand entry' : 'Add keg stand entry'}
+          </div>
 
-        <select
-          value={memberName}
-          onChange={(e) => setMemberName(e.target.value)}
-          style={styles.input}
-        >
-          <option value="">Select team member</option>
-          {team.members?.map((member) => (
-            <option key={member} value={member}>
-              {member}
-            </option>
-          ))}
-        </select>
+          <label style={styles.fieldLabel}>
+            Team member
+            <select
+              value={memberName}
+              onChange={(e) => setMemberName(e.target.value)}
+              style={styles.input}
+            >
+              <option value="">Select team member</option>
+              {team.members?.map((member) => (
+                <option key={member} value={member}>
+                  {member}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="Keg stand seconds"
-          value={seconds}
-          onChange={(e) => setSeconds(e.target.value)}
-          style={styles.input}
-        />
+          <label style={styles.fieldLabel}>
+            Seconds
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={seconds}
+              onChange={(e) => setSeconds(e.target.value)}
+              style={styles.input}
+            />
+          </label>
 
-        <div style={styles.buttonRow}>
-          <button
-            type="submit"
-            disabled={saving || !memberName || seconds === ''}
-            style={styles.button}
-          >
-            {saving
-              ? 'Saving...'
-              : editingEntryId
-              ? 'Update keg stand'
-              : 'Add keg stand'}
-          </button>
-
-          {editingEntryId && (
-            <button type="button" onClick={cancelEdit} style={styles.secondaryButton}>
-              Cancel edit
+          <div style={styles.buttonRow}>
+            <button
+              type="submit"
+              disabled={saving || !memberName || seconds === ''}
+              style={styles.button}
+            >
+              {saving
+                ? 'Saving...'
+                : editingEntryId
+                ? 'Update entry'
+                : 'Add entry'}
             </button>
-          )}
-        </div>
-      </form>
+
+            {editingEntryId ? (
+              <button type="button" onClick={cancelEdit} style={styles.secondaryButton}>
+                Cancel edit
+              </button>
+            ) : null}
+          </div>
+        </form>
+      </section>
 
       {teamAverage !== null && (
         <div style={styles.teamAverageCard}>
@@ -243,7 +259,7 @@ export default function KegStandSection({
       )}
 
       {teamEntries.length > 0 && (
-        <div style={styles.subsection}>
+        <section style={styles.panel}>
           <h3 style={styles.heading}>Your team entries</h3>
           <div style={styles.list}>
             {teamEntries.map((entry) => (
@@ -271,49 +287,56 @@ export default function KegStandSection({
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      <button
-        type="button"
-        onClick={() => setShowLeaderboard((v) => !v)}
-        style={styles.secondaryButton}
-      >
-        {showLeaderboard ? 'Hide keg stand leaderboards' : 'Show keg stand leaderboards'}
-      </button>
+      <section style={styles.resultsPanel}>
+        <div style={styles.resultsHeader}>
+          <h3 style={styles.heading}>Keg stand results</h3>
+          <button
+            type="button"
+            onClick={() => setShowLeaderboard((v) => !v)}
+            style={styles.secondaryButton}
+          >
+            {showLeaderboard ? 'Hide results' : 'Show results'}
+          </button>
+        </div>
 
-      {showLeaderboard && (
-        <>
-          <div style={styles.subsection}>
-            <h3 style={styles.heading}>Individual keg stand leaderboard</h3>
-            {loading ? (
-              <p>Loading...</p>
-            ) : (
+        {showLeaderboard ? (
+          <>
+            <div style={styles.subsection}>
+              <h4 style={styles.subHeading}>Individual leaderboard</h4>
+              {loading ? (
+                <p>Loading...</p>
+              ) : (
+                <div style={styles.list}>
+                  {enrichedEntries.map((entry, index) => (
+                    <div key={entry.id} style={styles.row}>
+                      #{index + 1} — {entry.member_name}: {formatSeconds(entry.seconds)} ({entry.teamLabel})
+                    </div>
+                  ))}
+                  {!enrichedEntries.length && <div style={styles.emptyRow}>No entries yet.</div>}
+                </div>
+              )}
+            </div>
+
+            <div style={styles.subsection}>
+              <h4 style={styles.subHeading}>Team averages</h4>
               <div style={styles.list}>
-                {enrichedEntries.map((entry, index) => (
-                  <div key={entry.id} style={styles.row}>
-                    #{index + 1} — {entry.member_name}: {formatSeconds(entry.seconds)} ({entry.teamLabel})
+                {teamLeaderboard.map((row, index) => (
+                  <div key={row.team_id} style={styles.row}>
+                    #{index + 1} — {row.teamLabel}: {formatSeconds(row.average)} avg → hole score{' '}
+                    {row.rankScore}
                   </div>
                 ))}
-                {!enrichedEntries.length && <div style={styles.emptyRow}>No entries yet.</div>}
+                {!teamLeaderboard.length && <div style={styles.emptyRow}>No team results yet.</div>}
               </div>
-            )}
-          </div>
-
-          <div style={styles.subsection}>
-            <h3 style={styles.heading}>Team average leaderboard</h3>
-            <div style={styles.list}>
-              {teamLeaderboard.map((row, index) => (
-                <div key={row.team_id} style={styles.row}>
-                  #{index + 1} — {row.teamLabel}: {formatSeconds(row.average)} avg → hole score{' '}
-                  {row.rankScore}
-                </div>
-              ))}
-              {!teamLeaderboard.length && <div style={styles.emptyRow}>No team results yet.</div>}
             </div>
-          </div>
-        </>
-      )}
+          </>
+        ) : (
+          <p style={styles.helperCopy}>Open results to compare individual and team averages.</p>
+        )}
+      </section>
 
       {message ? <p style={styles.success}>{message}</p> : null}
       {error ? <p style={styles.error}>{error}</p> : null}
@@ -323,8 +346,29 @@ export default function KegStandSection({
 
 const styles = {
   wrap: { marginTop: 12, display: 'grid', gap: 10 },
+  panel: {
+    background: '#fff',
+    border: '1px solid #dde6de',
+    borderRadius: 12,
+    padding: 11,
+  },
+  resultsPanel: {
+    background: '#fffcf4',
+    border: '1px solid #e1d4ae',
+    borderRadius: 12,
+    padding: 11,
+    display: 'grid',
+    gap: 9,
+  },
   form: { display: 'grid', gap: 9 },
   sectionTitle: { fontWeight: 800, color: '#214534' },
+  fieldLabel: {
+    display: 'grid',
+    gap: 6,
+    fontSize: '0.9rem',
+    color: '#2e4639',
+    fontWeight: 700,
+  },
   input: {
     padding: 11,
     borderRadius: 11,
@@ -378,11 +422,25 @@ const styles = {
     display: 'grid',
     gap: 8,
   },
+  subHeading: {
+    margin: 0,
+    fontSize: '0.84rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    color: '#6f5720',
+  },
   heading: {
     margin: 0,
     fontFamily: 'var(--font-display)',
     fontWeight: 400,
     color: '#194c31',
+  },
+  resultsHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
   },
   list: { display: 'grid', gap: 8 },
   row: {
@@ -407,6 +465,11 @@ const styles = {
     borderRadius: 11,
     border: '1px dashed #ddd',
     color: '#666',
+  },
+  helperCopy: {
+    margin: 0,
+    color: '#7c6731',
+    fontSize: '0.88rem',
   },
   success: {
     color: '#17663a',

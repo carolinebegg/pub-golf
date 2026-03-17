@@ -90,16 +90,19 @@ export default function TeamLogin({
   if (loggedInTeam) {
     const totalHoles = summary?.totalHoles ?? 0
     const progressLabel = totalHoles > 0 ? `${summary?.completedHoles ?? 0} / ${totalHoles}` : '—'
+    const primaryTeamName = getPrimaryTeamName(loggedInTeam)
+    const secondaryTeamMeta =
+      loggedInTeam.team_number !== null && loggedInTeam.team_number !== undefined
+        ? `Team ${loggedInTeam.team_number}`
+        : ''
 
     return (
       <section className="team-panel-wrap">
         <div className="team-panel-card">
           <div>
-            <p className="team-panel-eyebrow">You are playing as</p>
-            <h2 className="team-panel-title">{formatTeamHeading(loggedInTeam)}</h2>
-            <p className="team-panel-subtitle">
-              {loggedInTeam.name || 'Ready to enter your next score.'}
-            </p>
+            <p className="team-panel-eyebrow">Logged In Team</p>
+            <h2 className="team-panel-title">{primaryTeamName}</h2>
+            {secondaryTeamMeta ? <p className="team-panel-subtitle">{secondaryTeamMeta}</p> : null}
           </div>
 
           {loggedInTeam.members?.length ? (
@@ -132,7 +135,7 @@ export default function TeamLogin({
             <div className="team-summary-item team-summary-item-wide">
               <span className="team-summary-label">Current Hole</span>
               <span className="team-summary-value team-summary-note">
-                {summary?.currentHoleLabel || 'Hole progress unavailable'}
+                {summary?.currentHoleName || 'Hole progress unavailable'}
               </span>
             </div>
           </div>
@@ -200,19 +203,15 @@ export default function TeamLogin({
 
 export const TEAM_LOGIN_STORAGE_KEY = STORAGE_KEY
 
-function formatTeamHeading(team) {
-  const teamNumberPart =
-    team.team_number !== null && team.team_number !== undefined
-      ? `Team ${team.team_number}`
-      : 'Team'
-
-  if (team.theme) {
-    return `${teamNumberPart} - ${team.theme}`
-  }
-
+function getPrimaryTeamName(team) {
+  if (team.theme) return team.theme
   if (team.name) {
-    return `${teamNumberPart} - ${team.name}`
+    return team.name
   }
 
-  return teamNumberPart
+  if (team.team_number !== null && team.team_number !== undefined) {
+    return `Team ${team.team_number}`
+  }
+
+  return 'Team'
 }

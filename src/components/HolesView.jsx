@@ -3,11 +3,8 @@ import HoleCard from './HoleCard'
 export default function HolesView({
   holes = [],
   holeDataById = {},
-  expandedHoleId = null,
-  onToggleHole,
+  onOpenHoleDetails,
   selectedTeam = null,
-  allTeams = [],
-  onChanged,
 }) {
   return (
     <section className="section-stack">
@@ -27,14 +24,11 @@ export default function HolesView({
             <HoleCard
               key={hole.id}
               hole={hole}
-              isExpanded={expandedHoleId === hole.id}
-              onToggle={() => onToggleHole?.(hole.id)}
+              onOpenDetails={() => onOpenHoleDetails?.(hole.id)}
               selectedTeam={selectedTeam}
-              allTeams={allTeams}
               existingScore={holeState.existingScore}
               kegEntries={holeState.kegEntries}
               pitcherFinish={holeState.pitcherFinish}
-              onChanged={onChanged}
             />
           )
         })}

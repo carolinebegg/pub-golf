@@ -1,6 +1,3 @@
-import StandardHoleForm from './StandardHoleForm'
-import KegStandSection from './KegStandSection'
-import PitcherRaceSection from './PitcherRaceSection'
 import {
   calculateStandardHoleScore,
   calculateTeamAverageKegSeconds,
@@ -9,14 +6,11 @@ import {
 
 export default function HoleCard({
   hole,
-  isExpanded,
-  onToggle,
+  onOpenDetails,
   selectedTeam,
-  allTeams = [],
   existingScore = null,
   kegEntries = [],
   pitcherFinish = null,
-  onChanged,
 }) {
   const holeType = hole?.hole_type || 'standard'
 
@@ -35,9 +29,18 @@ export default function HoleCard({
       ? calculateTeamAverageKegSeconds(teamEntries)
       : null
 
+  const isCompleted =
+    holeType === 'keg_stand'
+      ? teamEntries.length > 0
+      : holeType === 'pitcher'
+      ? Boolean(pitcherFinish)
+      : Boolean(existingScore)
+
+  const typeDisplay = getHoleTypeDisplay(holeType)
+
   return (
     <div style={styles.card}>
-      <button type="button" onClick={onToggle} style={styles.cardButton}>
+      <div style={styles.cardButton}>
         <div style={styles.topRow}>
           <div style={styles.titleBlock}>
             <div style={styles.holeLabel}>Hole {hole.hole_number}</div>
@@ -45,93 +48,102 @@ export default function HoleCard({
           </div>
 
           <div style={styles.rightBlock}>
-            {hole.start_time ? <div style={styles.time}>{hole.start_time}</div> : null}
-
-            {selectedTeam && holeType === 'standard' && existingScore && (
-              <div style={styles.scoreBadge}>Score: {standardPreviewScore}</div>
-            )}
-
-            {selectedTeam && holeType === 'keg_stand' && kegAverage !== null && (
-              <div style={styles.scoreBadge}>Avg: {formatSeconds(kegAverage)}</div>
-            )}
-
-            {selectedTeam && holeType === 'pitcher' && pitcherFinish && (
-              <div style={styles.scoreBadge}>Finished</div>
-            )}
+            <span
+              style={{
+                ...styles.holeTypeBadge,
+                background: typeDisplay.badgeBg,
+                color: typeDisplay.badgeColor,
+                borderColor: typeDisplay.badgeBorder,
+              }}
+            >
+              {typeDisplay.label}
+            </span>
           </div>
         </div>
 
-        <div style={styles.expandText}>
-          {isExpanded ? 'Hide details ▲' : 'Show details ▼'}
-        </div>
-      </button>
+        <div style={styles.metaRow}>
+          <div style={styles.time}>{formatHoleTimeRange(hole)}</div>
 
-      {isExpanded && (
-        <div style={styles.details}>
-          {hole.rule_text ? (
-            <p style={styles.paragraph}>
-              <strong>Rule:</strong> {hole.rule_text}
-            </p>
-          ) : null}
+          <div style={styles.statusBlock}>
+            {selectedTeam ? (
+              <span
+                style={{
+                  ...styles.statusBadge,
+                  ...(isCompleted ? styles.statusBadgeComplete : styles.statusBadgePending),
+                }}
+              >
+                {isCompleted ? 'Completed' : 'Pending'}
+              </span>
+            ) : (
+              <span style={styles.statusBadge}>Login required</span>
+            )}
 
-          <div style={styles.badgeRow}>
-            <span style={styles.badge}>{formatHoleType(holeType)}</span>
-            {hole.has_bunker && <span style={styles.warningBadge}>Bunker hazard</span>}
-            {hole.has_water && <span style={styles.warningBadge}>Water hazard</span>}
+            {selectedTeam && holeType === 'standard' && existingScore ? (
+              <span style={styles.scoreBadge}>Score {standardPreviewScore}</span>
+            ) : null}
+
+            {selectedTeam && holeType === 'keg_stand' && kegAverage !== null ? (
+              <span style={styles.scoreBadge}>Avg {formatSeconds(kegAverage)}</span>
+            ) : null}
+
+            {selectedTeam && holeType === 'pitcher' && pitcherFinish ? (
+              <span style={styles.scoreBadge}>Finish saved</span>
+            ) : null}
           </div>
-
-          {hole.notes ? (
-            <p style={styles.paragraph}>
-              <strong>Notes:</strong> {hole.notes}
-            </p>
-          ) : null}
-
-          {!selectedTeam && (
-            <div style={styles.infoBox}>Log in as your team above to submit or edit scores.</div>
-          )}
-
-          {selectedTeam && holeType === 'standard' && (
-            <StandardHoleForm
-              hole={hole}
-              team={selectedTeam}
-              existingScore={existingScore}
-              onChanged={onChanged}
-            />
-          )}
-
-          {selectedTeam && holeType === 'keg_stand' && (
-            <KegStandSection
-              hole={hole}
-              team={selectedTeam}
-              allTeams={allTeams}
-              onChanged={onChanged}
-            />
-          )}
-
-          {selectedTeam && holeType === 'pitcher' && (
-            <PitcherRaceSection
-              hole={hole}
-              team={selectedTeam}
-              allTeams={allTeams}
-              onChanged={onChanged}
-            />
-          )}
         </div>
-      )}
+
+        <button type="button" onClick={onOpenDetails} style={styles.openButton}>
+          Open hole details
+        </button>
+      </div>
     </div>
   )
 }
 
-function formatHoleType(holeType) {
+function getHoleTypeDisplay(holeType) {
   switch (holeType) {
     case 'keg_stand':
-      return 'Keg stand'
+      return {
+        label: 'Keg Stand',
+        badgeBg: '#f8f1dc',
+        badgeColor: '#6f5720',
+        badgeBorder: '#dfcf9f',
+      }
     case 'pitcher':
-      return 'Pitcher race'
+      return {
+        label: 'Pitcher Race',
+        badgeBg: '#edf2ff',
+        badgeColor: '#284f92',
+        badgeBorder: '#c9d6f7',
+      }
     case 'standard':
     default:
-      return 'Standard hole'
+      return {
+        label: 'Standard',
+        badgeBg: '#eaf5ee',
+        badgeColor: '#1f5a3a',
+        badgeBorder: '#cce0d0',
+      }
   }
+}
+
+function formatHoleTimeRange(hole) {
+  const start = hole?.start_time
+  const end = hole?.end_time
+
+  if (start && end) {
+    return `${start} - ${end}`
+  }
+
+  if (start) {
+    return start
+  }
+
+  if (end) {
+    return `Until ${end}`
+  }
+
+  return 'Time not set'
 }
 
 const styles = {
@@ -143,12 +155,9 @@ const styles = {
     border: '1px solid var(--surface-border)',
   },
   cardButton: {
-    width: '100%',
-    border: 'none',
-    background: 'transparent',
-    textAlign: 'left',
     padding: 14,
-    cursor: 'pointer',
+    display: 'grid',
+    gap: 10,
   },
   topRow: {
     display: 'flex',
@@ -161,9 +170,8 @@ const styles = {
     minWidth: 0,
   },
   rightBlock: {
-    display: 'grid',
-    gap: 8,
-    justifyItems: 'end',
+    display: 'flex',
+    alignItems: 'flex-start',
   },
   holeLabel: {
     fontSize: '0.84rem',
@@ -177,10 +185,52 @@ const styles = {
     fontSize: '1.06rem',
     fontWeight: 800,
   },
+  holeTypeBadge: {
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderRadius: 999,
+    padding: '5px 10px',
+    fontSize: '0.76rem',
+    fontWeight: 800,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  metaRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
   time: {
     fontSize: '0.87rem',
     color: '#5a6b62',
     whiteSpace: 'nowrap',
+  },
+  statusBlock: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  statusBadge: {
+    background: '#f4f8f4',
+    border: '1px solid #d6dfd7',
+    color: '#335246',
+    padding: '5px 9px',
+    borderRadius: 999,
+    fontSize: '0.78rem',
+    fontWeight: 700,
+  },
+  statusBadgeComplete: {
+    background: '#eaf5ee',
+    borderColor: '#cce0d0',
+    color: '#1f5a3a',
+  },
+  statusBadgePending: {
+    background: '#f8f3e6',
+    borderColor: '#e5d8b5',
+    color: '#745f24',
   },
   scoreBadge: {
     background: '#f4f8f4',
@@ -190,52 +240,15 @@ const styles = {
     fontWeight: 700,
     border: '1px solid #d6dfd7',
   },
-  expandText: {
-    marginTop: 8,
-    fontSize: '0.86rem',
+  openButton: {
+    justifySelf: 'start',
+    border: '1px solid #c9d7cc',
+    background: '#fff',
     color: 'var(--green-700)',
-    fontWeight: 700,
-  },
-  details: {
-    borderTop: '1px solid #e2e8e2',
-    padding: 14,
-    background: '#fbfdfb',
-  },
-  paragraph: {
-    marginTop: 0,
-    marginBottom: 10,
-    color: '#2a3f33',
-  },
-  badgeRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 7,
-    marginTop: 10,
-    marginBottom: 10,
-  },
-  badge: {
-    background: '#eaf5ee',
-    padding: '5px 9px',
-    borderRadius: 999,
-    fontSize: '0.8rem',
-    fontWeight: 700,
-    color: '#1f5a3a',
-  },
-  warningBadge: {
-    background: '#f9f0da',
-    padding: '5px 9px',
-    borderRadius: 999,
-    fontSize: '0.8rem',
-    fontWeight: 700,
-    color: '#6f5720',
-  },
-  infoBox: {
-    padding: 11,
+    fontWeight: 800,
     borderRadius: 10,
-    background: '#fff8e8',
-    border: '1px solid #ecd8a8',
-    color: '#6b5a22',
-    fontWeight: 600,
-    fontSize: '0.9rem',
+    padding: 11,
+    fontSize: '0.84rem',
+    cursor: 'pointer',
   },
 }

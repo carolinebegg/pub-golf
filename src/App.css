@@ -83,15 +83,16 @@ p {
   font-family: var(--font-display);
   font-size: clamp(1.9rem, 4.2vw, 2.7rem);
   font-weight: 400;
-  line-height: 1.1;
+  line-height: 1.22;
   color: #174b31;
 }
 
 .app-subtitle {
-  margin-top: 8px;
+  margin-top: 12px;
   max-width: 50ch;
   color: var(--text-secondary);
   font-size: 0.98rem;
+  line-height: 1.45;
 }
 
 .status-pill {
@@ -369,6 +370,76 @@ p {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden;
+}
+
+.hole-details-modal {
+  width: min(48rem, 100%);
+}
+
+.hole-detail-summary {
+  background: linear-gradient(to right, #f7faf8, #fdf9ef);
+}
+
+.hole-detail-scroll {
+  padding-bottom: 22px;
+}
+
+.hole-modal-section {
+  border: 1px solid #dde6de;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+}
+
+.hole-modal-heading {
+  margin: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5e7167;
+}
+
+.hole-modal-copy {
+  margin-top: 6px;
+  color: #2f4237;
+  line-height: 1.42;
+  font-size: 0.92rem;
+}
+
+.hole-type-panel {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 13px;
+  padding: 12px;
+  background: #fff;
+}
+
+.standard-hole-panel {
+  border-color: #d9e6dc;
+  background: #f9fcfa;
+}
+
+.keg-hole-panel {
+  border-color: #e1d4ae;
+  background: #fffcf4;
+}
+
+.pitcher-hole-panel {
+  border-color: #ced9f4;
+  background: #f6f8ff;
+}
+
+.compact-info-section {
+  background: #f5faf6;
+  border-color: #dbe5dd;
+  color: #224434;
+}
+
+.warning-info-section {
+  background: #fff7e6;
+  border-color: #ecd8a8;
+  color: #6b5a22;
+  font-weight: 700;
 }
 
 .breakdown-modal-header {

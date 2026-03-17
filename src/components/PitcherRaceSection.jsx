@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { buildPitcherLeaderboard } from '../lib/helpers'
 
@@ -14,20 +14,16 @@ export default function PitcherRaceSection({
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
-  useEffect(() => {
-    if (hole?.id) {
-      loadFinishes()
-    }
-  }, [hole?.id])
+  const loadFinishesForHole = useCallback(async (holeIdParam = hole?.id) => {
+    if (!holeIdParam) return
 
-  async function loadFinishes() {
     setLoading(true)
     setError('')
 
     const { data, error: loadError } = await supabase
       .from('pitcher_finishes')
       .select('*')
-      .eq('hole_id', hole.id)
+      .eq('hole_id', holeIdParam)
       .order('finished_at', { ascending: true })
 
     if (loadError) {
@@ -38,7 +34,19 @@ export default function PitcherRaceSection({
 
     setFinishes(data || [])
     setLoading(false)
-  }
+  }, [hole])
+
+  useEffect(() => {
+    if (!hole?.id) return
+
+    const loadTimer = window.setTimeout(() => {
+      void loadFinishesForHole(hole.id)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(loadTimer)
+    }
+  }, [hole, loadFinishesForHole])
 
   const myFinish = useMemo(() => {
     return finishes.find((row) => row.team_id === team.id) || null
@@ -74,7 +82,7 @@ export default function PitcherRaceSection({
     }
 
     setMessage(myFinish ? 'Finish time updated.' : 'Pitcher finish saved.')
-    await loadFinishes()
+    await loadFinishesForHole()
     setSaving(false)
 
     if (onChanged) {
@@ -104,7 +112,7 @@ export default function PitcherRaceSection({
     }
 
     setMessage('Pitcher finish deleted.')
-    await loadFinishes()
+    await loadFinishesForHole()
     setSaving(false)
 
     if (onChanged) {
@@ -126,7 +134,7 @@ export default function PitcherRaceSection({
 
   return (
     <div style={styles.wrap}>
-      <div style={styles.card}>
+      <section style={styles.card}>
         <div style={styles.headingRow}>
           <strong>Your team</strong>
           <span style={styles.teamLabel}>{team.name}</span>
@@ -140,8 +148,12 @@ export default function PitcherRaceSection({
           <p style={styles.muted}>No finish recorded yet.</p>
         )}
 
+        <p style={styles.helperText}>
+          First team to finish gets the best score. Times are ranked automatically.
+        </p>
+
         <div style={styles.buttonRow}>
-          <button onClick={markFinished} disabled={saving} style={styles.button}>
+          <button type="button" onClick={markFinished} disabled={saving || loading} style={styles.button}>
             {saving
               ? 'Saving...'
               : myFinish
@@ -150,14 +162,14 @@ export default function PitcherRaceSection({
           </button>
 
           {myFinish && (
-            <button onClick={deleteFinish} disabled={saving} style={styles.dangerButton}>
+            <button type="button" onClick={deleteFinish} disabled={saving || loading} style={styles.dangerButton}>
               {saving ? 'Working...' : 'Delete finish'}
             </button>
           )}
         </div>
-      </div>
+      </section>
 
-      <div>
+      <section style={styles.resultsPanel}>
         <h3 style={styles.heading}>Pitcher finish order</h3>
 
         {loading ? (
@@ -178,7 +190,7 @@ export default function PitcherRaceSection({
             {!leaderboard.length && <div style={styles.emptyRow}>No teams have finished yet.</div>}
           </div>
         )}
-      </div>
+      </section>
 
       {message ? <p style={styles.success}>{message}</p> : null}
       {error ? <p style={styles.error}>{error}</p> : null}
@@ -189,6 +201,14 @@ export default function PitcherRaceSection({
 const styles = {
   wrap: { marginTop: 12, display: 'grid', gap: 10 },
   card: {
+    padding: 11,
+    borderRadius: 12,
+    background: '#f6f8ff',
+    border: '1px solid #ced9f4',
+    display: 'grid',
+    gap: 8,
+  },
+  resultsPanel: {
     padding: 11,
     borderRadius: 12,
     background: '#fff',
@@ -209,6 +229,12 @@ const styles = {
     fontFamily: 'var(--font-display)',
     fontWeight: 400,
     color: '#194c31',
+  },
+  helperText: {
+    margin: 0,
+    color: '#4b5a82',
+    fontSize: '0.88rem',
+    lineHeight: 1.34,
   },
   buttonRow: {
     display: 'flex',

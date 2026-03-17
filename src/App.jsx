@@ -5,6 +5,7 @@ import TeamLogin, { TEAM_LOGIN_STORAGE_KEY } from './components/TeamLogin'
 import LeaderboardView from './components/LeaderboardView'
 import HolesView from './components/HolesView'
 import TeamBreakdownModal from './components/TeamBreakdownModal'
+import HoleDetailsModal from './components/HoleDetailsModal'
 import './App.css'
 
 function isHoleComplete(holeType, holeState) {
@@ -39,9 +40,9 @@ export default function App() {
       return null
     }
   })
-  const [expandedHoleId, setExpandedHoleId] = useState(null)
   const [activeView, setActiveView] = useState('leaderboard')
   const [breakdownTeamId, setBreakdownTeamId] = useState(null)
+  const [activeHoleId, setActiveHoleId] = useState(null)
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -213,10 +214,10 @@ export default function App() {
 
     const hasHoles = totalHoles > 0
     const finishedAllHoles = hasHoles && completedHoles === totalHoles
-    const currentHoleLabel = hasHoles
+    const currentHoleName = hasHoles
       ? finishedAllHoles
-        ? `All ${totalHoles} holes complete`
-        : `Hole ${nextHole?.hole_number ?? orderedHoles[0]?.hole_number ?? 1} / ${totalHoles}`
+        ? 'All holes complete'
+        : nextHole?.bar_name || 'Next hole pending'
       : 'No holes yet'
 
     return {
@@ -224,7 +225,7 @@ export default function App() {
         loggedInTeamStanding && loggedInTeamStanding.holesCompleted > 0
           ? loggedInTeamStanding.totalScore
           : null,
-      currentHoleLabel,
+      currentHoleName,
       completedHoles,
       totalHoles,
       nextHoleId: nextHole?.id ?? null,
@@ -237,14 +238,33 @@ export default function App() {
     return overallLeaderboard.find((team) => team.teamId === breakdownTeamId) || null
   }, [overallLeaderboard, breakdownTeamId])
 
-  function handleToggleHole(holeId) {
-    setExpandedHoleId((current) => (current === holeId ? null : holeId))
-  }
+  const selectedHole = useMemo(() => {
+    if (!activeHoleId) return null
+
+    return orderedHoles.find((hole) => hole.id === activeHoleId) || null
+  }, [orderedHoles, activeHoleId])
+
+  const selectedHoleState = useMemo(() => {
+    if (!selectedHole) return null
+
+    return (
+      holeDataById[selectedHole.id] || {
+        existingScore: null,
+        kegEntries: [],
+        pitcherFinish: null,
+      }
+    )
+  }, [selectedHole, holeDataById])
 
   function handleSwitchView(nextView) {
     setActiveView(nextView)
+
     if (nextView !== 'leaderboard') {
       setBreakdownTeamId(null)
+    }
+
+    if (nextView !== 'holes') {
+      setActiveHoleId(null)
     }
   }
 
@@ -256,11 +276,19 @@ export default function App() {
     setBreakdownTeamId(null)
   }
 
+  function handleOpenHoleDetails(holeId) {
+    setActiveHoleId(holeId)
+  }
+
+  function handleCloseHoleDetails() {
+    setActiveHoleId(null)
+  }
+
   function handleEnterScore() {
     setActiveView('holes')
 
     if (teamPanelSummary?.nextHoleId) {
-      setExpandedHoleId(teamPanelSummary.nextHoleId)
+      setActiveHoleId(teamPanelSummary.nextHoleId)
     }
   }
 
@@ -327,17 +355,24 @@ export default function App() {
                 <HolesView
                   holes={orderedHoles}
                   holeDataById={holeDataById}
-                  expandedHoleId={expandedHoleId}
-                  onToggleHole={handleToggleHole}
+                  onOpenHoleDetails={handleOpenHoleDetails}
                   selectedTeam={loggedInTeam}
-                  allTeams={teams}
-                  onChanged={refreshData}
                 />
               )}
             </>
           )}
 
           <TeamBreakdownModal team={selectedBreakdownTeam} onClose={handleCloseBreakdown} />
+          <HoleDetailsModal
+            hole={selectedHole}
+            selectedTeam={loggedInTeam}
+            allTeams={teams}
+            existingScore={selectedHoleState?.existingScore || null}
+            kegEntries={selectedHoleState?.kegEntries || []}
+            pitcherFinish={selectedHoleState?.pitcherFinish || null}
+            onChanged={refreshData}
+            onClose={handleCloseHoleDetails}
+          />
         </div>
       </div>
     </div>
