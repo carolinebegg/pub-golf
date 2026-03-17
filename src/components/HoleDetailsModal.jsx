@@ -264,7 +264,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
           key: `${team.id}::${member}`,
           memberName: member,
           teamId: team.id,
-          teamLabel: team.name || team.theme || 'Team',
+          teamLabel: team.theme,
         })
       }
     }
@@ -388,7 +388,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
             <option value="">No vote</option>
             {options.map((option) => (
               <option key={option.key} value={option.key}>
-                {option.memberName} — {option.teamLabel}
+                {option.memberName} ({option.teamLabel})
               </option>
             ))}
           </select>
@@ -404,7 +404,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
             <option value="">No vote</option>
             {options.map((option) => (
               <option key={option.key} value={option.key}>
-                {option.memberName} — {option.teamLabel}
+                {option.memberName} ({option.teamLabel})
               </option>
             ))}
           </select>
