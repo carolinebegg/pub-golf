@@ -33,6 +33,9 @@ export default function HoleCard({
       ? calculateTeamAverageKegSeconds(teamEntries)
       : null
 
+  const hasBunkerHazardShot =
+    selectedTeam && hole?.has_bunker && existingScore?.is_bunker_hazard
+
   const typeDisplay = getHoleTypeDisplay({ hole, holeType })
   const statusDisplay = getStatusDisplay(holeStatus)
 
@@ -80,6 +83,13 @@ export default function HoleCard({
 
             {selectedTeam && holeType === 'pitcher' && pitcherFinish ? (
               <span style={styles.scoreBadge}>Finish recorded</span>
+            ) : null}
+
+            {hasBunkerHazardShot ? (
+              <span style={styles.bunkerBadge}>
+                Bunker hazard:{' '}
+                {existingScore.drinker_name || existingScore.drink_name || 'Recorded'}
+              </span>
             ) : null}
           </div>
         </div>
@@ -278,6 +288,15 @@ const styles = {
     fontSize: '0.8rem',
     fontWeight: 700,
     border: '1px solid #d6dfd7',
+  },
+  bunkerBadge: {
+    background: '#fff7eb',
+    padding: '5px 9px',
+    borderRadius: 999,
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    border: '1px solid #f0d8a8',
+    color: '#6f5720',
   },
   openButton: {
     justifySelf: 'start',

@@ -34,6 +34,7 @@ export default function App() {
   const [scores, setScores] = useState([])
   const [kegStandEntries, setKegStandEntries] = useState([])
   const [pitcherFinishes, setPitcherFinishes] = useState([])
+  const [guinnessVotes, setGuinnessVotes] = useState([])
 
   const [loggedInTeam, setLoggedInTeam] = useState(() => {
     try {
@@ -46,7 +47,14 @@ export default function App() {
       return null
     }
   })
-  const [activeView, setActiveView] = useState('leaderboard')
+  const [activeView, setActiveView] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pub-golf-active-view')
+      return stored === 'holes' || stored === 'leaderboard' ? stored : 'leaderboard'
+    } catch {
+      return 'leaderboard'
+    }
+  })
   const [breakdownTeamId, setBreakdownTeamId] = useState(null)
   const [activeHoleId, setActiveHoleId] = useState(null)
 
@@ -69,16 +77,18 @@ export default function App() {
       { data: scoresData, error: scoresError },
       { data: kegData, error: kegError },
       { data: pitcherData, error: pitcherError },
+      { data: guinnessData, error: guinnessError },
     ] = await Promise.all([
       supabase.from('holes').select('*').order('hole_number', { ascending: true }),
       supabase.from('teams').select('*').order('team_number', { ascending: true }),
       supabase.from('scores').select('*'),
       supabase.from('keg_stand_entries').select('*'),
       supabase.from('pitcher_finishes').select('*'),
+      supabase.from('guinness_split_votes').select('*'),
     ])
 
     const firstError =
-      holesError || teamsError || scoresError || kegError || pitcherError
+      holesError || teamsError || scoresError || kegError || pitcherError || guinnessError
 
     if (firstError) {
       setError(firstError.message || 'Failed to load data')
@@ -92,12 +102,14 @@ export default function App() {
     const nextScores = scoresData || []
     const nextKeg = kegData || []
     const nextPitcher = pitcherData || []
+    const nextGuinness = guinnessData || []
 
     setHoles(nextHoles)
     setTeams(nextTeams)
     setScores(nextScores)
     setKegStandEntries(nextKeg)
     setPitcherFinishes(nextPitcher)
+    setGuinnessVotes(nextGuinness)
 
     setLoggedInTeam((current) => {
       if (!current?.id) return null
@@ -288,8 +300,23 @@ export default function App() {
     )
   }, [selectedHole, holeDataById])
 
+  const selectedHoleKegEntries = useMemo(() => {
+    if (!selectedHole) return []
+    return kegStandEntries.filter((entry) => entry.hole_id === selectedHole.id)
+  }, [selectedHole, kegStandEntries])
+
+  const selectedHolePitcherFinishes = useMemo(() => {
+    if (!selectedHole) return []
+    return pitcherFinishes.filter((finish) => finish.hole_id === selectedHole.id)
+  }, [selectedHole, pitcherFinishes])
+
   function handleSwitchView(nextView) {
     setActiveView(nextView)
+    try {
+      localStorage.setItem('pub-golf-active-view', nextView)
+    } catch {
+      // ignore storage failure
+    }
 
     if (nextView !== 'leaderboard') {
       setBreakdownTeamId(null)
@@ -381,6 +408,7 @@ export default function App() {
                   kegStandEntries={kegStandEntries}
                   pitcherFinishes={pitcherFinishes}
                   leaderboardData={overallLeaderboard}
+                  guinnessVotes={guinnessVotes}
                   onOpenBreakdown={handleOpenBreakdown}
                 />
               ) : (
@@ -403,6 +431,9 @@ export default function App() {
             existingScore={selectedHoleState?.existingScore || null}
             pitcherFinish={selectedHoleState?.pitcherFinish || null}
             holeStatus={selectedHole ? holeStatusById[selectedHole.id] || 'not-started' : 'not-started'}
+            kegEntriesForHole={selectedHoleKegEntries}
+            pitcherFinishesForHole={selectedHolePitcherFinishes}
+            guinnessVotes={guinnessVotes}
             onChanged={refreshData}
             onClose={handleCloseHoleDetails}
           />

@@ -1,4 +1,5 @@
 import OverallLeaderboard from './OverallLeaderboard'
+import GuinnessLeaderboards from './GuinnessLeaderboards'
 
 export default function LeaderboardView({
   teams = [],
@@ -7,6 +8,7 @@ export default function LeaderboardView({
   kegStandEntries = [],
   pitcherFinishes = [],
   leaderboardData = [],
+  guinnessVotes = [],
   onOpenBreakdown,
 }) {
   return (
@@ -20,6 +22,8 @@ export default function LeaderboardView({
         leaderboardData={leaderboardData}
         onOpenBreakdown={onOpenBreakdown}
       />
+
+      <GuinnessLeaderboards votes={guinnessVotes} teams={teams} />
     </section>
   )
 }

@@ -273,6 +273,10 @@ export function getHoleTypeLabel(holeType) {
 
 export function getHoleDisplayLabel(hole, holeType = getEffectiveHoleType(hole)) {
   if (holeType === 'standard') {
+    if (hole?.has_guinness && !hole?.has_bunker && !hole?.has_water) {
+      return 'Guinness Hole'
+    }
+
     if (hole?.has_bunker && hole?.has_water) {
       return 'Bunker + Water'
     }
@@ -425,7 +429,8 @@ export function buildOverallLeaderboardData({
       }
 
       const scoreRow = getScoreForTeamAndHole(scores, team.id, hole.id)
-      const score = calculateStandardHoleScore(scoreRow)
+      const isBunkerHazardOnly = scoreRow?.is_bunker_hazard
+      const score = isBunkerHazardOnly ? null : calculateStandardHoleScore(scoreRow)
 
       if (score !== null) {
         totalScore += score
