@@ -163,17 +163,11 @@ export default function PitcherRaceSection({
   return (
     <div style={styles.wrap}>
       <section style={styles.actionBlock}>
-        <p style={styles.helperText}>
-          Tap once when your team finishes the pitcher. First finish gets 0, then +1, +2, and so on.
-        </p>
-
         {myFinish ? (
           <p style={styles.confirmText}>
             Finished at <strong>{new Date(myFinish.finished_at).toLocaleTimeString()}</strong>
           </p>
-        ) : (
-          <p style={styles.muted}>No finish recorded yet.</p>
-        )}
+        ) : null}
 
         <div style={styles.buttonRow}>
           <button
@@ -247,21 +241,11 @@ const styles = {
     gap: 8,
     paddingTop: 4,
   },
-  helperText: {
-    margin: 0,
-    color: '#4b5f54',
-    fontSize: '0.9rem',
-    lineHeight: 1.36,
-  },
   confirmText: {
     margin: 0,
     color: '#214634',
     fontSize: '0.9rem',
     lineHeight: 1.34,
-  },
-  muted: {
-    color: '#5f6e65',
-    margin: 0,
   },
   buttonRow: {
     display: 'flex',

@@ -193,7 +193,7 @@ export default function StandardHoleForm({
             checked={form.isGuinness}
             onChange={(e) => updateField('isGuinness', e.target.checked)}
           />
-          Guinness bonus (minus 1)
+          Guinness bonus (-1)
         </label>
       </section>
 
@@ -257,7 +257,7 @@ export default function StandardHoleForm({
               checked={form.waterViolated}
               onChange={(e) => updateField('waterViolated', e.target.checked)}
             />
-            Water violated / peed (plus 3)
+            Water violated / peed (+3)
           </label>
         ) : null}
 
@@ -267,7 +267,7 @@ export default function StandardHoleForm({
             checked={form.spilledDrink}
             onChange={(e) => updateField('spilledDrink', e.target.checked)}
           />
-          Spilled drink (plus 1)
+          Spilled drink (+1)
         </label>
 
         <label style={styles.checkboxRow}>
@@ -276,7 +276,7 @@ export default function StandardHoleForm({
             checked={form.threwUp}
             onChange={(e) => updateField('threwUp', e.target.checked)}
           />
-          Threw up (plus 5)
+          Threw up (+5)
         </label>
 
         {hole.bar_name === 'Tapster' ? (
@@ -286,7 +286,7 @@ export default function StandardHoleForm({
               checked={form.photoboothMissing}
               onChange={(e) => updateField('photoboothMissing', e.target.checked)}
             />
-            No photobooth proof (plus 2)
+            No photobooth proof (+2)
           </label>
         ) : null}
 

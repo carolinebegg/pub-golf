@@ -330,8 +330,8 @@ export default function App() {
         <div className="app-content">
           <header className="app-header">
             <div>
-              <h1 className="app-title">⛳ Pub Golf: The SQL ☘️</h1>
-              <p className="app-subtitle">Track scores, keg stands, pitcher races, and the overall leaderboard.</p>
+              <h1 className="app-title">Pub Golf: The SQL ☘️</h1>
+              <p className="app-subtitle">Welcome to our very special second pub golf! Use this site to track your team scores and keep up with the overall leaderboard.</p>
             </div>
 
             {refreshing ? <div className="status-pill">Refreshing...</div> : null}
