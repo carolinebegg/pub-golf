@@ -40,13 +40,15 @@ export default function OverallLeaderboard({
       <div style={styles.headerRow}>
         <h2 style={styles.title}>Overall Leaderboard</h2>
         <div style={styles.subtitle}>
-          Lowest total score wins
+            Lowest total score wins
         </div>
       </div>
 
       <div style={styles.list}>
         {leaderboard.map((team) => {
-          const podiumStyles = getPodiumStyles(team.rank)
+          const hasRank = Number.isFinite(team.rank)
+          const hasStarted = team.holesCompleted > 0
+          const podiumStyles = hasRank ? getPodiumStyles(team.rank) : {}
 
           return (
             <article
@@ -61,10 +63,11 @@ export default function OverallLeaderboard({
                   <div
                     style={{
                       ...styles.rankBadge,
+                      ...(!hasRank ? styles.unrankedBadge : null),
                       ...(podiumStyles.badgeStyle || null),
                     }}
                   >
-                    #{team.rank}
+                    {hasRank ? `#${team.rank}` : '—'}
                   </div>
                 </div>
 
@@ -74,7 +77,14 @@ export default function OverallLeaderboard({
                 </div>
 
                 <div style={styles.scoreBlock}>
-                  <div style={styles.scoreValue}>{team.totalScore}</div>
+                  <div
+                    style={{
+                      ...styles.scoreValue,
+                      ...(!hasStarted ? styles.unstartedScoreValue : null),
+                    }}
+                  >
+                    {hasStarted ? team.totalScore : '—'}
+                  </div>
                   <div style={styles.scoreLabel}>total</div>
                 </div>
               </div>
@@ -206,6 +216,10 @@ const styles = {
     color: '#fff',
     fontWeight: 800,
   },
+  unrankedBadge: {
+    background: '#d5ddd8',
+    color: '#4f6458',
+  },
   goldRankBadge: {
     background: 'var(--gold-600)',
   },
@@ -240,6 +254,9 @@ const styles = {
     color: 'var(--green-700)',
     lineHeight: 1,
     fontVariantNumeric: 'tabular-nums',
+  },
+  unstartedScoreValue: {
+    color: '#7a8a81',
   },
   scoreLabel: {
     color: '#637168',

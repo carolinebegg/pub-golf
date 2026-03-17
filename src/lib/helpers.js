@@ -451,13 +451,24 @@ export function buildOverallLeaderboardData({
       members: Array.isArray(team.members) ? team.members : [],
       totalScore,
       holesCompleted,
+      hasStarted: holesCompleted > 0,
       holeBreakdown,
     }
   })
 
   leaderboardRows.sort((a, b) => {
-    if (a.totalScore !== b.totalScore) return a.totalScore - b.totalScore
+    if (a.hasStarted !== b.hasStarted) return a.hasStarted ? -1 : 1
+
+    if (!a.hasStarted && !b.hasStarted) {
+      const aNum = toNumber(a.teamNumber, Number.MAX_SAFE_INTEGER)
+      const bNum = toNumber(b.teamNumber, Number.MAX_SAFE_INTEGER)
+      if (aNum !== bNum) return aNum - bNum
+
+      return a.teamName.localeCompare(b.teamName)
+    }
+
     if (a.holesCompleted !== b.holesCompleted) return b.holesCompleted - a.holesCompleted
+    if (a.totalScore !== b.totalScore) return a.totalScore - b.totalScore
 
     const aNum = toNumber(a.teamNumber, Number.MAX_SAFE_INTEGER)
     const bNum = toNumber(b.teamNumber, Number.MAX_SAFE_INTEGER)
@@ -469,14 +480,24 @@ export function buildOverallLeaderboardData({
   let lastScore = null
   let lastHolesCompleted = null
   let lastRank = 0
+  let startedCount = 0
 
-  return leaderboardRows.map((row, index) => {
+  return leaderboardRows.map((row) => {
+    if (!row.hasStarted) {
+      return {
+        ...row,
+        rank: null,
+      }
+    }
+
+    startedCount += 1
+
     const sameStandingAsPrevious =
-      index > 0 &&
+      startedCount > 1 &&
       row.totalScore === lastScore &&
       row.holesCompleted === lastHolesCompleted
 
-    const rank = sameStandingAsPrevious ? lastRank : index + 1
+    const rank = sameStandingAsPrevious ? lastRank : startedCount
 
     lastScore = row.totalScore
     lastHolesCompleted = row.holesCompleted
