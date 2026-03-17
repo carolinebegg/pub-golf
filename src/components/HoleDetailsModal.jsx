@@ -342,8 +342,11 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
 
   return (
     <form onSubmit={handleSubmit} className="hole-guinness-form">
-      <div className="hole-guinness-grid">
-        <label className="team-field">
+      <div
+        className="hole-guinness-grid"
+        style={{ display: 'grid', gap: 12 }}
+      >
+        <label className="team-field" style={{ marginBottom: 4 }}>
           <span className="team-field-label">Best Split G</span>
           <select
             value={bestSelection}
@@ -382,7 +385,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
           gap: 10,
           flexWrap: 'wrap',
           justifyContent: 'center',
-          marginTop: 12,
+          marginTop: 16,
         }}
       >
         <button
@@ -399,7 +402,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
             fontWeight: 800,
           }}
         >
-          {saving ? 'Saving...' : 'Submit vote'}
+          {saving ? 'Saving...' : message ? 'Vote submitted' : 'Submit vote'}
         </button>
 
         <button
@@ -418,15 +421,14 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
             cursor: 'pointer',
           }}
         >
-          {showLeaderboards ? 'Hide leaderboard' : 'Leaderboard'}
+          {showLeaderboards ? 'Hide leaderboard' : '🏆 Leaderboard'}
         </button>
       </div>
 
-      {message ? <p className="team-success">{message}</p> : null}
       {error ? <p className="team-error">{error}</p> : null}
 
       {showLeaderboards ? (
-        <div className="hole-detail-section" style={{ paddingTop: 16 }}>
+        <div className="hole-detail-section" style={{ paddingTop: 24 }}>
           <div
             style={{
               display: 'grid',
