@@ -4,9 +4,7 @@ import KegStandSection from './KegStandSection'
 import PitcherRaceSection from './PitcherRaceSection'
 import {
   calculateStandardHoleScore,
-  calculateTeamAverageKegSeconds,
   formatHoleTimeRange,
-  formatSeconds,
   getEffectiveHoleType,
   getHoleTypeLabel,
 } from '../lib/helpers'
@@ -16,8 +14,8 @@ export default function HoleDetailsModal({
   selectedTeam = null,
   allTeams = [],
   existingScore = null,
-  kegEntries = [],
   pitcherFinish = null,
+  holeStatus = 'not-started',
   onChanged,
   onClose,
 }) {
@@ -44,12 +42,8 @@ export default function HoleDetailsModal({
   if (!hole) return null
 
   const holeType = getEffectiveHoleType(hole)
-  const teamKegEntries = selectedTeam
-    ? kegEntries.filter((entry) => entry.team_id === selectedTeam.id)
-    : []
-
+  const statusLabel = getStatusLabel(holeStatus)
   const scorePreview = calculateStandardHoleScore(existingScore)
-  const kegAverage = calculateTeamAverageKegSeconds(teamKegEntries)
 
   function handleBackdropMouseDown(event) {
     if (event.target === event.currentTarget) {
@@ -78,104 +72,82 @@ export default function HoleDetailsModal({
         </div>
 
         <div className="breakdown-modal-summary hole-detail-summary">
-          <div>
+          <div className="hole-detail-summary-item">
             <span className="breakdown-summary-label">Type</span>
             <strong className="breakdown-summary-value">{getHoleTypeLabel(holeType)}</strong>
           </div>
 
-          <div>
+          <div className="hole-detail-summary-item">
             <span className="breakdown-summary-label">Your status</span>
-            <strong className="breakdown-summary-value">
-              {renderCompletionText({ holeType, existingScore, teamKegEntries, pitcherFinish })}
-            </strong>
+            <strong className="breakdown-summary-value">{statusLabel}</strong>
           </div>
         </div>
 
         <div className="breakdown-modal-scroll hole-detail-scroll">
-          <article className="breakdown-row hole-detail-row">
-            <div className="breakdown-row-main">
-              <h4 className="breakdown-row-title">Rule</h4>
-              <p className="breakdown-row-detail">{getRuleCopy({ hole, holeType })}</p>
-            </div>
-          </article>
+          <section className="hole-detail-section">
+            <h4 className="hole-detail-section-title">Rule</h4>
+            <p className="hole-detail-section-copy">{getRuleCopy({ hole, holeType })}</p>
+          </section>
 
           {hole.notes ? (
-            <article className="breakdown-row hole-detail-row">
-              <div className="breakdown-row-main">
-                <h4 className="breakdown-row-title">Notes</h4>
-                <p className="breakdown-row-detail">{hole.notes}</p>
-              </div>
-            </article>
-          ) : null}
-
-          {selectedTeam && holeType === 'standard' && existingScore ? (
-            <article className="breakdown-row hole-detail-row">
-              <div className="breakdown-row-main">
-                <h4 className="breakdown-row-title">Current score</h4>
-                <p className="breakdown-row-detail">{scorePreview ?? '-'}</p>
-              </div>
-            </article>
-          ) : null}
-
-          {selectedTeam && holeType === 'keg_stand' && kegAverage !== null ? (
-            <article className="breakdown-row hole-detail-row">
-              <div className="breakdown-row-main">
-                <h4 className="breakdown-row-title">Your team average</h4>
-                <p className="breakdown-row-detail">{formatSeconds(kegAverage)}</p>
-              </div>
-            </article>
+            <section className="hole-detail-section">
+              <h4 className="hole-detail-section-title">Notes</h4>
+              <p className="hole-detail-section-copy">{hole.notes}</p>
+            </section>
           ) : null}
 
           {!selectedTeam ? (
-            <article className="breakdown-row hole-detail-row">
-              <div className="breakdown-row-main">
-                <h4 className="breakdown-row-title">Team access required</h4>
-                <p className="breakdown-row-detail">Log in to your team to submit or edit this hole.</p>
-              </div>
-            </article>
+            <section className="hole-detail-section">
+              <h4 className="hole-detail-section-title">Team access</h4>
+              <p className="hole-detail-section-copy">Log in to your team to submit or edit this hole.</p>
+            </section>
           ) : null}
 
           {selectedTeam && holeType === 'standard' ? (
-            <article className="breakdown-row hole-detail-row">
-              <div className="breakdown-row-main">
-                <h4 className="breakdown-row-title">Enter score</h4>
-                <StandardHoleForm
-                  key={`standard-${hole.id}-${selectedTeam.id}-${existingScore?.id ?? 'new'}`}
-                  hole={hole}
-                  team={selectedTeam}
-                  existingScore={existingScore}
-                  onChanged={onChanged}
-                />
-              </div>
-            </article>
+            <section className="hole-detail-section">
+              <h4 className="hole-detail-section-title">Enter score</h4>
+              <p className="hole-detail-section-copy">
+                {existingScore ? (
+                  <>
+                    Current score: <strong>{scorePreview ?? '-'}</strong>
+                  </>
+                ) : (
+                  'No score submitted yet.'
+                )}
+              </p>
+              <StandardHoleForm
+                key={`standard-${hole.id}-${selectedTeam.id}-${existingScore?.id ?? 'new'}`}
+                hole={hole}
+                team={selectedTeam}
+                existingScore={existingScore}
+                onChanged={onChanged}
+              />
+            </section>
           ) : null}
 
           {selectedTeam && holeType === 'keg_stand' ? (
-            <article className="breakdown-row hole-detail-row">
-              <div className="breakdown-row-main">
-                <h4 className="breakdown-row-title">Add keg stand entry</h4>
-                <KegStandSection
-                  hole={hole}
-                  team={selectedTeam}
-                  allTeams={allTeams}
-                  onChanged={onChanged}
-                />
-              </div>
-            </article>
+            <section className="hole-detail-section">
+              <h4 className="hole-detail-section-title">Add entry</h4>
+              <KegStandSection
+                hole={hole}
+                team={selectedTeam}
+                allTeams={allTeams}
+                onChanged={onChanged}
+              />
+            </section>
           ) : null}
 
           {selectedTeam && holeType === 'pitcher' ? (
-            <article className="breakdown-row hole-detail-row">
-              <div className="breakdown-row-main">
-                <h4 className="breakdown-row-title">Record finish</h4>
-                <PitcherRaceSection
-                  hole={hole}
-                  team={selectedTeam}
-                  allTeams={allTeams}
-                  onChanged={onChanged}
-                />
-              </div>
-            </article>
+            <section className="hole-detail-section">
+              <h4 className="hole-detail-section-title">Finish pitcher</h4>
+              <PitcherRaceSection
+                hole={hole}
+                team={selectedTeam}
+                allTeams={allTeams}
+                pitcherFinish={pitcherFinish}
+                onChanged={onChanged}
+              />
+            </section>
           ) : null}
         </div>
       </section>
@@ -195,14 +167,14 @@ function getRuleCopy({ hole, holeType }) {
   return hole?.rule_text || 'Submit your standard score for this hole.'
 }
 
-function renderCompletionText({ holeType, existingScore, teamKegEntries, pitcherFinish }) {
-  if (holeType === 'keg_stand') {
-    return teamKegEntries.length ? 'Completed' : 'Not started'
+function getStatusLabel(status) {
+  switch (status) {
+    case 'completed':
+      return 'Completed'
+    case 'in-progress':
+      return 'In progress'
+    case 'not-started':
+    default:
+      return 'Not started'
   }
-
-  if (holeType === 'pitcher') {
-    return pitcherFinish ? 'Completed' : 'Not started'
-  }
-
-  return existingScore ? 'Completed' : 'Not started'
 }

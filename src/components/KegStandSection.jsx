@@ -44,7 +44,7 @@ export default function KegStandSection({
 
     setEntries(data || [])
     setLoading(false)
-  }, [hole])
+  }, [hole?.id])
 
   useEffect(() => {
     if (!hole?.id) return
@@ -191,7 +191,6 @@ export default function KegStandSection({
   return (
     <div style={styles.wrap}>
       <section style={styles.primaryAction}>
-        <h4 style={styles.sectionTitle}>{editingEntryId ? 'Edit entry' : 'Add entry'}</h4>
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.controlsRow}>
             <select
@@ -228,7 +227,7 @@ export default function KegStandSection({
                 ? 'Saving...'
                 : editingEntryId
                 ? 'Update entry'
-                : 'Add keg entry'}
+                : 'Add entry'}
             </button>
           </div>
 
@@ -272,62 +271,56 @@ export default function KegStandSection({
         </section>
       )}
 
-      <section style={styles.resultsPanel}>
-        <div style={styles.resultsHeader}>
-          <h3 style={styles.heading}>Results</h3>
-          <button
-            type="button"
-            onClick={() => setShowLeaderboard((v) => !v)}
-            style={styles.secondaryButton}
-          >
-            {showLeaderboard ? 'Hide results' : 'Show results'}
-          </button>
-        </div>
+      <div style={styles.leaderboardToggle}>
+        <button
+          type="button"
+          style={styles.leaderboardBtn}
+          onClick={() => setShowLeaderboard((v) => !v)}
+        >
+          {showLeaderboard ? 'Hide leaderboard' : '🏆 Leaderboard'}
+        </button>
+      </div>
 
-        {showLeaderboard ? (
-          <>
-            <div style={styles.subsection}>
-              <h4 style={styles.subHeading}>Individuals</h4>
-              {loading ? (
-                <p>Loading...</p>
-              ) : (
-                <div style={styles.list}>
-                  {enrichedEntries.map((entry, index) => (
-                    <div key={entry.id} style={styles.row}>
-                      <div style={styles.resultMainLine}>
-                        <span style={styles.rankValue}>#{index + 1}</span>
-                        <span style={styles.resultName}>{entry.member_name}</span>
-                        <span style={styles.resultTime}>{formatSeconds(entry.seconds)}</span>
-                      </div>
-                      <span style={styles.resultSubLine}>{entry.teamLabel}</span>
-                    </div>
-                  ))}
-                  {!enrichedEntries.length && <div style={styles.emptyRow}>No entries yet.</div>}
+      {showLeaderboard && (
+        <div style={styles.leaderboardCard}>
+          <div style={styles.leaderboardSectionHeader}>Individual times</div>
+          {loading ? (
+            <div style={styles.leaderboardEmpty}>Loading...</div>
+          ) : enrichedEntries.length === 0 ? (
+            <div style={styles.leaderboardEmpty}>No entries yet.</div>
+          ) : (
+            enrichedEntries.map((entry, index) => (
+              <div key={entry.id} style={styles.leaderboardRow}>
+                <span style={styles.leaderboardRank}>
+                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                </span>
+                <div style={styles.leaderboardInfo}>
+                  <span style={styles.leaderboardName}>{entry.member_name}</span>
+                  <span style={styles.leaderboardMeta}>{entry.teamLabel}</span>
                 </div>
-              )}
-            </div>
-
-            <div style={styles.subsection}>
-              <h4 style={styles.subHeading}>Team scores</h4>
-              <div style={styles.list}>
-                {teamLeaderboard.map((row, index) => (
-                  <div key={row.team_id} style={styles.row}>
-                    <div style={styles.resultMainLine}>
-                      <span style={styles.rankValue}>#{index + 1}</span>
-                      <span style={styles.resultName}>{row.teamLabel}</span>
-                      <span style={styles.resultTime}>{formatSeconds(row.average)}</span>
-                    </div>
-                    <span style={styles.resultSubLine}>Hole score {row.rankScore}</span>
-                  </div>
-                ))}
-                {!teamLeaderboard.length && <div style={styles.emptyRow}>No team results yet.</div>}
+                <span style={styles.leaderboardStat}>{formatSeconds(entry.seconds)}</span>
               </div>
-            </div>
-          </>
-        ) : (
-          <p style={styles.helperCopy}>Open results to compare individual and team averages.</p>
-        )}
-      </section>
+            ))
+          )}
+          <div style={styles.leaderboardSectionHeader}>Team scores</div>
+          {teamLeaderboard.length === 0 ? (
+            <div style={styles.leaderboardEmpty}>No team results yet.</div>
+          ) : (
+            teamLeaderboard.map((row, index) => (
+              <div key={row.team_id} style={styles.leaderboardRow}>
+                <span style={styles.leaderboardRank}>
+                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                </span>
+                <div style={styles.leaderboardInfo}>
+                  <span style={styles.leaderboardName}>{row.teamLabel}</span>
+                  <span style={styles.leaderboardMeta}>Score {row.rankScore}</span>
+                </div>
+                <span style={styles.leaderboardStat}>{formatSeconds(row.average)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {message ? <p style={styles.success}>{message}</p> : null}
       {error ? <p style={styles.error}>{error}</p> : null}
@@ -348,12 +341,6 @@ const styles = {
     display: 'grid',
     gap: 8,
   },
-  resultsPanel: {
-    borderTop: '1px solid #e7ece7',
-    paddingTop: 10,
-    display: 'grid',
-    gap: 8,
-  },
   form: { display: 'grid', gap: 8 },
   controlsRow: {
     display: 'flex',
@@ -361,12 +348,7 @@ const styles = {
     flexWrap: 'wrap',
     alignItems: 'center',
   },
-  sectionTitle: {
-    margin: 0,
-    fontSize: '0.95rem',
-    color: '#1f3027',
-    fontWeight: 800,
-  },
+
   input: {
     padding: 11,
     borderRadius: 11,
@@ -415,30 +397,11 @@ const styles = {
     fontSize: '0.8rem',
     padding: 0,
   },
-  subsection: {
-    display: 'grid',
-    gap: 5,
-  },
-  subHeading: {
-    margin: 0,
-    fontSize: '0.78rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    color: '#6a7d72',
-    fontWeight: 700,
-  },
   heading: {
     margin: 0,
     fontSize: '0.92rem',
     color: '#194c31',
     fontWeight: 800,
-  },
-  resultsHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
   },
   list: { display: 'grid', gap: 0 },
   row: {
@@ -458,38 +421,71 @@ const styles = {
     flexWrap: 'wrap',
     alignItems: 'center',
   },
-  resultMainLine: {
-    display: 'flex',
-    gap: 8,
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
+  leaderboardToggle: {
+    paddingTop: 4,
   },
-  rankValue: {
-    color: '#1f5a3a',
-    fontWeight: 800,
-    minWidth: 26,
-  },
-  resultName: {
-    color: '#1f3027',
+  leaderboardBtn: {
+    padding: '8px 16px',
+    borderRadius: 8,
+    border: '1.5px solid #2d6a4a',
+    background: 'transparent',
+    color: '#2d6a4a',
     fontWeight: 700,
-  },
-  resultTime: {
-    color: '#3e5448',
-    fontWeight: 700,
-  },
-  resultSubLine: {
-    color: '#5f6e65',
-    fontSize: '0.84rem',
-  },
-  emptyRow: {
-    padding: '6px 0',
-    color: '#666',
     fontSize: '0.88rem',
+    cursor: 'pointer',
   },
-  helperCopy: {
-    margin: 0,
-    color: '#5f6e65',
-    fontSize: '0.84rem',
+  leaderboardCard: {
+    border: '1.5px solid #b8d9c4',
+    borderRadius: 12,
+    overflow: 'hidden',
+    background: '#f6fbf7',
+  },
+  leaderboardSectionHeader: {
+    background: '#2d6a4a',
+    color: '#fff',
+    padding: '6px 14px',
+    fontSize: '0.74rem',
+    fontWeight: 800,
+    textTransform: 'uppercase',
+    letterSpacing: '0.07em',
+  },
+  leaderboardRow: {
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+    padding: '9px 14px',
+    borderTop: '1px solid #e3ede6',
+  },
+  leaderboardRank: {
+    fontSize: '1.1rem',
+    minWidth: 28,
+    textAlign: 'center',
+  },
+  leaderboardInfo: {
+    flex: 1,
+    display: 'grid',
+    gap: 1,
+    minWidth: 0,
+  },
+  leaderboardName: {
+    fontWeight: 700,
+    color: '#1f3027',
+    fontSize: '0.9rem',
+  },
+  leaderboardMeta: {
+    color: '#6a7d72',
+    fontSize: '0.8rem',
+  },
+  leaderboardStat: {
+    fontWeight: 700,
+    color: '#1f5a3a',
+    fontSize: '0.88rem',
+    whiteSpace: 'nowrap',
+  },
+  leaderboardEmpty: {
+    padding: '8px 14px',
+    color: '#6a7d72',
+    fontSize: '0.88rem',
   },
   success: {
     color: '#17663a',

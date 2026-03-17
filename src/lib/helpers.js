@@ -293,8 +293,8 @@ export function formatHoleTimeRange(hole) {
 /**
  * Currency formatter for prices.
  */
-export function formatCurrency(value, currency = 'EUR') {
-  return new Intl.NumberFormat('en-IE', {
+export function formatCurrency(value, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
   }).format(toNumber(value, 0))

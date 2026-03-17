@@ -149,7 +149,7 @@ export default function StandardHoleForm({
 
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
-      <section style={styles.previewCard}>
+      <section style={styles.previewRow}>
         <div style={styles.previewHeader}>
           <strong>Score preview</strong>
           <span style={styles.previewValue}>{computedPreviewScore ?? '-'}</span>
@@ -159,31 +159,33 @@ export default function StandardHoleForm({
         </p>
       </section>
 
-      <section style={styles.groupCard}>
-        <h5 style={styles.groupTitle}>Drink info</h5>
+      <section style={styles.section}>
+        <h5 style={styles.sectionTitle}>Score</h5>
 
-        <label style={styles.field}>
-          <span style={styles.label}>Drink name <em style={styles.optionalTag}>(optional)</em></span>
-          <input
-            value={form.drinkName}
-            onChange={(e) => updateField('drinkName', e.target.value)}
-            style={styles.input}
-            placeholder="Example: Guinness"
-          />
-        </label>
+        <div style={styles.inlineGrid}>
+          <label style={styles.field}>
+            <span style={styles.label}>Number of sips <em style={styles.requiredTag}>(required)</em></span>
+            <input
+              type="number"
+              min="0"
+              required
+              value={form.sips}
+              onChange={(e) => updateField('sips', e.target.value)}
+              style={styles.input}
+              placeholder="0"
+            />
+          </label>
 
-        <label style={styles.field}>
-          <span style={styles.label}>Number of sips <em style={styles.requiredTag}>(required)</em></span>
-          <input
-            type="number"
-            min="0"
-            required
-            value={form.sips}
-            onChange={(e) => updateField('sips', e.target.value)}
-            style={styles.input}
-            placeholder="0"
-          />
-        </label>
+          <label style={styles.field}>
+            <span style={styles.label}>Drink name <em style={styles.optionalTag}>(optional)</em></span>
+            <input
+              value={form.drinkName}
+              onChange={(e) => updateField('drinkName', e.target.value)}
+              style={styles.input}
+              placeholder="Example: Guinness"
+            />
+          </label>
+        </div>
 
         <label style={styles.checkboxRow}>
           <input
@@ -195,45 +197,47 @@ export default function StandardHoleForm({
         </label>
       </section>
 
-      <section style={styles.groupCard}>
-        <h5 style={styles.groupTitle}>Payment info</h5>
+      <section style={styles.section}>
+        <h5 style={styles.sectionTitle}>Details</h5>
 
-        <label style={styles.field}>
-          <span style={styles.label}>Who paid <em style={styles.optionalTag}>(optional)</em></span>
-          <select
-            value={form.paidBy}
-            onChange={(e) => updateField('paidBy', e.target.value)}
-            style={styles.input}
-          >
-            <option value="">No payer selected</option>
-            {team.members?.map((member) => (
-              <option key={member} value={member}>
-                {member}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div style={styles.inlineGrid}>
+          <label style={styles.field}>
+            <span style={styles.label}>Who paid <em style={styles.optionalTag}>(optional)</em></span>
+            <select
+              value={form.paidBy}
+              onChange={(e) => updateField('paidBy', e.target.value)}
+              style={styles.input}
+            >
+              <option value="">No payer selected</option>
+              {team.members?.map((member) => (
+                <option key={member} value={member}>
+                  {member}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label style={styles.field}>
-          <span style={styles.label}>Price <em style={styles.optionalTag}>(optional)</em></span>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.price}
-            onChange={(e) => updateField('price', e.target.value)}
-            style={styles.input}
-            placeholder="0.00"
-          />
-        </label>
+          <label style={styles.field}>
+            <span style={styles.label}>Price (USD) <em style={styles.optionalTag}>(optional)</em></span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.price}
+              onChange={(e) => updateField('price', e.target.value)}
+              style={styles.input}
+              placeholder="0.00"
+            />
+          </label>
+        </div>
 
         {form.price !== '' && Number(form.price) >= 0 ? (
           <div style={styles.inlineNote}>Price preview: {formatCurrency(form.price)}</div>
         ) : null}
       </section>
 
-      <section style={styles.groupCard}>
-        <h5 style={styles.groupTitle}>Penalties and bonuses</h5>
+      <section style={styles.section}>
+        <h5 style={styles.sectionTitle}>Adjustments</h5>
 
         {hole.has_bunker ? (
           <label style={styles.checkboxRow}>
@@ -291,7 +295,7 @@ export default function StandardHoleForm({
           style={styles.revealButton}
           onClick={() => setShowAdjustments((current) => !current)}
         >
-          {showAdjustments ? 'Hide manual adjustments' : 'Show manual adjustments'}
+          {showAdjustments ? 'Hide manual adjustments' : 'Manual adjustments'}
         </button>
 
         {showAdjustments ? (
@@ -323,8 +327,8 @@ export default function StandardHoleForm({
         ) : null}
       </section>
 
-      <section style={styles.groupCard}>
-        <h5 style={styles.groupTitle}>Notes</h5>
+      <section style={styles.section}>
+        <h5 style={styles.sectionTitle}>Notes</h5>
 
         <label style={styles.field}>
           <span style={styles.label}>Extra notes <em style={styles.optionalTag}>(optional)</em></span>
@@ -364,14 +368,16 @@ export default function StandardHoleForm({
 const styles = {
   form: {
     display: 'grid',
-    gap: 10,
-    marginTop: 10,
+    gap: 12,
+    marginTop: 6,
   },
-  previewCard: {
-    border: '1px solid #dbe5dd',
-    borderRadius: 12,
-    background: '#f5faf6',
-    padding: 12,
+  previewRow: {
+    display: 'grid',
+    gap: 4,
+    padding: '8px 12px',
+    borderRadius: 10,
+    background: '#f0f7f2',
+    border: '1px solid #c8dfd0',
   },
   previewHeader: {
     display: 'flex',
@@ -386,26 +392,31 @@ const styles = {
     color: '#1f5c3b',
   },
   previewHelp: {
-    marginTop: 6,
-    color: '#576960',
-    fontSize: '0.88rem',
-    lineHeight: 1.35,
-  },
-  groupCard: {
-    border: '1px solid #dfe7df',
-    borderRadius: 12,
-    background: '#fff',
-    padding: 12,
-    display: 'grid',
-    gap: 9,
-  },
-  groupTitle: {
     margin: 0,
+    color: '#576960',
     fontSize: '0.84rem',
-    color: '#5f7067',
+    lineHeight: 1.32,
+  },
+  section: {
+    display: 'grid',
+    gap: 8,
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: '1px solid #dde8df',
+    background: '#f8faf8',
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: '0.78rem',
+    color: '#4a6054',
+    fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
-    fontWeight: 800,
+  },
+  inlineGrid: {
+    display: 'grid',
+    gap: 8,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   },
   field: {
     display: 'grid',
@@ -450,12 +461,11 @@ const styles = {
   },
   revealButton: {
     justifySelf: 'start',
-    border: '1px solid #cad7cc',
-    background: '#fff',
+    border: 'none',
+    background: 'transparent',
     color: '#1f5c3b',
     fontWeight: 700,
-    borderRadius: 10,
-    padding: '8px 10px',
+    padding: 0,
     cursor: 'pointer',
     fontSize: '0.84rem',
   },
@@ -478,6 +488,7 @@ const styles = {
   },
   button: {
     padding: 11,
+    minHeight: 44,
     borderRadius: 11,
     border: 'none',
     background: 'var(--green-600)',
@@ -486,9 +497,10 @@ const styles = {
   },
   dangerButton: {
     padding: 11,
+    minHeight: 44,
     borderRadius: 11,
-    border: '1px solid #b33',
-    background: '#fff5f5',
+    border: 'none',
+    background: 'transparent',
     color: '#8a1f1f',
     fontWeight: 700,
   },

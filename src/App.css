@@ -378,17 +378,52 @@ p {
   width: min(48rem, 100%);
 }
 
-.hole-detail-summary {
-  background: #f8fbf8;
+.hole-details-modal .breakdown-modal-summary {
+  margin: 0 20px;
+  padding: 10px 0;
+  border: 0;
+  border-top: 1px solid #e4ece6;
+  border-bottom: 1px solid #e4ece6;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.hole-detail-summary-item {
+  flex: 1 1 170px;
+  min-width: 0;
 }
 
 .hole-detail-scroll {
-  padding-bottom: 20px;
-  gap: 10px;
+  padding: 0 20px 16px;
+  gap: 0;
 }
 
-.hole-detail-row {
-  grid-template-columns: minmax(0, 1fr);
+.hole-detail-section {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid #e4ece6;
+}
+
+.hole-detail-section:first-child {
+  border-top: none;
+}
+
+.hole-detail-section-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #4e6258;
+}
+
+.hole-detail-section-copy {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: #30463a;
 }
 
 .breakdown-modal-header {
@@ -587,7 +622,15 @@ p {
     margin: 0 16px 10px;
   }
 
+  .hole-details-modal .breakdown-modal-summary {
+    margin: 0 16px;
+  }
+
   .breakdown-modal-scroll {
     padding: 0 16px 16px;
+  }
+
+  .hole-detail-scroll {
+    padding: 0 16px 14px;
   }
 }

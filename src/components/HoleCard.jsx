@@ -20,7 +20,7 @@ export default function HoleCard({
 
   const teamEntries =
     selectedTeam && holeType === 'keg_stand'
-      ? kegEntries.filter((entry) => entry.team_id === selectedTeam.id)
+      ? kegEntries
       : []
 
   const standardPreviewScore =

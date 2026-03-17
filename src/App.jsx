@@ -249,7 +249,7 @@ export default function App() {
     const currentHoleName = hasHoles
       ? finishedAllHoles
         ? 'All holes complete'
-        : inProgressHole?.bar_name || 'Next hole pending'
+        : inProgressHole?.bar_name || 'Next hole not started'
       : 'No holes yet'
 
     return {
@@ -401,8 +401,8 @@ export default function App() {
             selectedTeam={loggedInTeam}
             allTeams={teams}
             existingScore={selectedHoleState?.existingScore || null}
-            kegEntries={selectedHoleState?.kegEntries || []}
             pitcherFinish={selectedHoleState?.pitcherFinish || null}
+            holeStatus={selectedHole ? holeStatusById[selectedHole.id] || 'not-started' : 'not-started'}
             onChanged={refreshData}
             onClose={handleCloseHoleDetails}
           />

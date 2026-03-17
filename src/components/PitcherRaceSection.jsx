@@ -6,12 +6,14 @@ export default function PitcherRaceSection({
   hole,
   team,
   allTeams = [],
+  pitcherFinish = null,
   onChanged,
 }) {
   const [finishes, setFinishes] = useState([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
+  const [myFinish, setMyFinish] = useState(pitcherFinish)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -35,23 +37,16 @@ export default function PitcherRaceSection({
 
     setFinishes(data || [])
     setLoading(false)
-  }, [hole])
+  }, [hole?.id])
 
   useEffect(() => {
-    if (!hole?.id) return
-
-    const loadTimer = window.setTimeout(() => {
-      void loadFinishesForHole(hole.id)
-    }, 0)
-
-    return () => {
-      window.clearTimeout(loadTimer)
-    }
-  }, [hole, loadFinishesForHole])
-
-  const myFinish = useMemo(() => {
-    return finishes.find((row) => row.team_id === team.id) || null
-  }, [finishes, team.id])
+    setMyFinish(pitcherFinish || null)
+    setFinishes([])
+    setShowResults(false)
+    setLoading(false)
+    setError('')
+    setMessage('')
+  }, [hole?.id, team?.id, pitcherFinish])
 
   async function markFinished() {
     if (!hole?.id || !team?.id) {
@@ -68,13 +63,15 @@ export default function PitcherRaceSection({
     setError('')
     setMessage('')
 
+    const finishedAt = new Date().toISOString()
+
     const { error: saveError } = await supabase
       .from('pitcher_finishes')
       .upsert(
         {
           hole_id: hole.id,
           team_id: team.id,
-          finished_at: new Date().toISOString(),
+          finished_at: finishedAt,
         },
         {
           onConflict: 'hole_id,team_id',
@@ -87,8 +84,17 @@ export default function PitcherRaceSection({
       return
     }
 
+    setMyFinish({
+      hole_id: hole.id,
+      team_id: team.id,
+      finished_at: finishedAt,
+    })
     setMessage('Pitcher finish recorded.')
-    await loadFinishesForHole()
+
+    if (showResults) {
+      await loadFinishesForHole()
+    }
+
     setSaving(false)
 
     if (onChanged) {
@@ -97,7 +103,7 @@ export default function PitcherRaceSection({
   }
 
   async function resetFinish() {
-    if (!myFinish?.id) return
+    if (!hole?.id || !team?.id || !myFinish) return
 
     const confirmed = window.confirm('Reset your team finish so it can be submitted again?')
     if (!confirmed) return
@@ -109,7 +115,8 @@ export default function PitcherRaceSection({
     const { error: deleteError } = await supabase
       .from('pitcher_finishes')
       .delete()
-      .eq('id', myFinish.id)
+      .eq('hole_id', hole.id)
+      .eq('team_id', team.id)
 
     if (deleteError) {
       setError(deleteError.message)
@@ -117,8 +124,13 @@ export default function PitcherRaceSection({
       return
     }
 
+    setMyFinish(null)
     setMessage('Finish reset. You can record it again.')
-    await loadFinishesForHole()
+
+    if (showResults) {
+      await loadFinishesForHole()
+    }
+
     setSaving(false)
 
     if (onChanged) {
@@ -126,7 +138,19 @@ export default function PitcherRaceSection({
     }
   }
 
+  async function toggleResults() {
+    if (showResults) {
+      setShowResults(false)
+      return
+    }
+
+    setShowResults(true)
+    await loadFinishesForHole()
+  }
+
   const leaderboard = useMemo(() => {
+    if (!showResults) return []
+
     return buildPitcherLeaderboard(finishes).map((row) => {
       const t = allTeams.find((teamRow) => teamRow.id === row.team_id)
       return {
@@ -134,24 +158,18 @@ export default function PitcherRaceSection({
         teamLabel: t ? (t.theme || t.name || `Team ${t.team_number}`) : 'Unknown team',
       }
     })
-  }, [finishes, allTeams])
-
-  const myLeaderboardRow = useMemo(() => {
-    return leaderboard.find((row) => row.team_id === team.id) || null
-  }, [leaderboard, team.id])
+  }, [showResults, finishes, allTeams])
 
   return (
     <div style={styles.wrap}>
       <section style={styles.actionBlock}>
-        <h4 style={styles.sectionTitle}>Finish pitcher</h4>
         <p style={styles.helperText}>
           Tap once when your team finishes the pitcher. First finish gets 0, then +1, +2, and so on.
         </p>
 
         {myFinish ? (
           <p style={styles.confirmText}>
-            Finish recorded at <strong>{new Date(myFinish.finished_at).toLocaleTimeString()}</strong>
-            {myLeaderboardRow ? ` • Place #${myLeaderboardRow.rankScore + 1}` : ''}
+            Finished at <strong>{new Date(myFinish.finished_at).toLocaleTimeString()}</strong>
           </p>
         ) : (
           <p style={styles.muted}>No finish recorded yet.</p>
@@ -161,7 +179,7 @@ export default function PitcherRaceSection({
           <button
             type="button"
             onClick={markFinished}
-            disabled={saving || loading || Boolean(myFinish)}
+            disabled={saving || Boolean(myFinish)}
             style={styles.button}
           >
             {saving ? 'Saving...' : myFinish ? 'Finish recorded' : 'Finish pitcher'}
@@ -171,7 +189,7 @@ export default function PitcherRaceSection({
             <button
               type="button"
               onClick={resetFinish}
-              disabled={saving || loading}
+              disabled={saving}
               style={styles.secondaryButton}
             >
               {saving ? 'Working...' : 'Reset finish'}
@@ -180,48 +198,41 @@ export default function PitcherRaceSection({
         </div>
       </section>
 
-      <section style={styles.resultsPanel}>
-        <div style={styles.resultsHeader}>
-          <h3 style={styles.heading}>Results</h3>
-          <button
-            type="button"
-            onClick={() => setShowResults((current) => !current)}
-            style={styles.secondaryButton}
-          >
-            {showResults ? 'Hide results' : 'Show results'}
-          </button>
-        </div>
+      <div style={styles.leaderboardToggle}>
+        <button
+          type="button"
+          style={styles.leaderboardBtn}
+          onClick={() => {
+            void toggleResults()
+          }}
+        >
+          {showResults ? 'Hide leaderboard' : '🏆 Leaderboard'}
+        </button>
+      </div>
 
-        {showResults ? (
-          loading ? (
-            <p style={styles.muted}>Loading...</p>
+      {showResults && (
+        <div style={styles.leaderboardCard}>
+          <div style={styles.leaderboardSectionHeader}>Finish order</div>
+          {loading ? (
+            <div style={styles.leaderboardEmpty}>Loading...</div>
+          ) : leaderboard.length === 0 ? (
+            <div style={styles.leaderboardEmpty}>No finishes yet.</div>
           ) : (
-            <div style={styles.table}>
-              <div style={styles.tableHeader}>
-                <span>Rank</span>
-                <span>Team</span>
-                <span>Time</span>
-                <span>Score</span>
-              </div>
-
-              {leaderboard.map((row) => (
-                <div key={row.id} style={styles.tableRow}>
-                  <span style={styles.rankCell}>#{row.rankScore + 1}</span>
-                  <span style={styles.teamCell}>{row.teamLabel}</span>
-                  <span style={styles.timeCell}>{new Date(row.finished_at).toLocaleTimeString()}</span>
-                  <span style={styles.scoreCell}>{row.rankScore}</span>
+            leaderboard.map((row, index) => (
+              <div key={row.id || row.team_id} style={styles.leaderboardRow}>
+                <span style={styles.leaderboardRank}>
+                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                </span>
+                <div style={styles.leaderboardInfo}>
+                  <span style={styles.leaderboardName}>{row.teamLabel}</span>
+                  <span style={styles.leaderboardMeta}>{new Date(row.finished_at).toLocaleTimeString()}</span>
                 </div>
-              ))}
-
-              {!leaderboard.length ? (
-                <div style={styles.emptyRow}>No finishes yet. Use the button above to record the first finish.</div>
-              ) : null}
-            </div>
-          )
-        ) : (
-          <p style={styles.helperCopy}>Show results to view finish order and scores.</p>
-        )}
-      </section>
+                <span style={styles.leaderboardStat}>+{row.rankScore}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {message ? <p style={styles.success}>{message}</p> : null}
       {error ? <p style={styles.error}>{error}</p> : null}
@@ -230,17 +241,11 @@ export default function PitcherRaceSection({
 }
 
 const styles = {
-  wrap: { marginTop: 6, display: 'grid', gap: 12 },
+  wrap: { marginTop: 4, display: 'grid', gap: 12 },
   actionBlock: {
     display: 'grid',
     gap: 8,
     paddingTop: 4,
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: '0.95rem',
-    color: '#1f3027',
-    fontWeight: 800,
   },
   helperText: {
     margin: 0,
@@ -275,82 +280,77 @@ const styles = {
   secondaryButton: {
     padding: 0,
     minHeight: 0,
-    borderRadius: 11,
     border: 'none',
     background: 'transparent',
     color: '#294637',
     fontWeight: 700,
     fontSize: '0.84rem',
   },
-  resultsPanel: {
-    display: 'grid',
-    gap: 8,
-    borderTop: '1px solid #e4ece6',
-    paddingTop: 10,
+  leaderboardToggle: {
+    paddingTop: 4,
   },
-  resultsHeader: {
+  leaderboardBtn: {
+    padding: '8px 16px',
+    borderRadius: 8,
+    border: '1.5px solid #2d6a4a',
+    background: 'transparent',
+    color: '#2d6a4a',
+    fontWeight: 700,
+    fontSize: '0.88rem',
+    cursor: 'pointer',
+  },
+  leaderboardCard: {
+    border: '1.5px solid #b8d9c4',
+    borderRadius: 12,
+    overflow: 'hidden',
+    background: '#f6fbf7',
+  },
+  leaderboardSectionHeader: {
+    background: '#2d6a4a',
+    color: '#fff',
+    padding: '6px 14px',
+    fontSize: '0.74rem',
+    fontWeight: 800,
+    textTransform: 'uppercase',
+    letterSpacing: '0.07em',
+  },
+  leaderboardRow: {
     display: 'flex',
-    justifyContent: 'space-between',
     gap: 10,
     alignItems: 'center',
-    flexWrap: 'wrap',
+    padding: '9px 14px',
+    borderTop: '1px solid #e3ede6',
   },
-  heading: {
-    margin: 0,
-    fontSize: '0.92rem',
-    color: '#194c31',
-    fontWeight: 800,
+  leaderboardRank: {
+    fontSize: '1.1rem',
+    minWidth: 28,
+    textAlign: 'center',
   },
-  table: {
+  leaderboardInfo: {
+    flex: 1,
     display: 'grid',
-    gap: 6,
-  },
-  tableHeader: {
-    display: 'grid',
-    gridTemplateColumns: '56px minmax(0, 1fr) auto 52px',
-    gap: 8,
-    color: '#6a7d72',
-    fontSize: '0.74rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    fontWeight: 800,
-  },
-  tableRow: {
-    display: 'grid',
-    gridTemplateColumns: '56px minmax(0, 1fr) auto 52px',
-    gap: 8,
-    alignItems: 'center',
-    padding: '9px 0',
-    borderTop: '1px solid #e4ece6',
-    fontSize: '0.9rem',
-  },
-  rankCell: {
-    color: '#1f5a3a',
-    fontWeight: 800,
-  },
-  teamCell: {
-    color: '#1f3027',
-    fontWeight: 700,
+    gap: 1,
     minWidth: 0,
   },
-  timeCell: {
-    color: '#5f6e65',
+  leaderboardName: {
+    fontWeight: 700,
+    color: '#1f3027',
+    fontSize: '0.9rem',
+  },
+  leaderboardMeta: {
+    color: '#6a7d72',
+    fontSize: '0.8rem',
+  },
+  leaderboardStat: {
+    fontWeight: 700,
+    color: '#1f5a3a',
+    fontSize: '0.88rem',
     whiteSpace: 'nowrap',
   },
-  scoreCell: {
-    color: '#1f5a3a',
-    fontWeight: 800,
-    textAlign: 'right',
-  },
-  emptyRow: {
-    color: '#666',
+  leaderboardEmpty: {
+    padding: '8px 14px',
+    color: '#6a7d72',
     fontSize: '0.88rem',
-    paddingTop: 6,
-  },
-  helperCopy: {
-    margin: 0,
-    color: '#5f6e65',
-    fontSize: '0.84rem',
   },
   success: {
     color: '#17663a',
