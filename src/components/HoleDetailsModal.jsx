@@ -5,8 +5,8 @@ import PitcherRaceSection from './PitcherRaceSection'
 import {
   calculateStandardHoleScore,
   formatHoleTimeRange,
+  getHoleDisplayLabel,
   getEffectiveHoleType,
-  getHoleTypeLabel,
 } from '../lib/helpers'
 
 export default function HoleDetailsModal({
@@ -42,6 +42,7 @@ export default function HoleDetailsModal({
   if (!hole) return null
 
   const holeType = getEffectiveHoleType(hole)
+  const holeTypeLabel = getHoleDisplayLabel(hole, holeType)
   const statusLabel = getStatusLabel(holeStatus)
   const scorePreview = calculateStandardHoleScore(existingScore)
 
@@ -63,7 +64,7 @@ export default function HoleDetailsModal({
           <div>
             <p className="breakdown-modal-eyebrow">Hole Details</p>
             <h3 className="breakdown-modal-title">Hole {hole.hole_number} - {hole.bar_name}</h3>
-            <p className="breakdown-modal-members">{getHoleTypeLabel(holeType)} • {formatHoleTimeRange(hole)}</p>
+            <p className="breakdown-modal-members">{holeTypeLabel} • {formatHoleTimeRange(hole)}</p>
           </div>
 
           <button type="button" className="breakdown-close-button" onClick={() => onClose?.()}>
@@ -74,7 +75,7 @@ export default function HoleDetailsModal({
         <div className="breakdown-modal-summary hole-detail-summary">
           <div className="hole-detail-summary-item">
             <span className="breakdown-summary-label">Type</span>
-            <strong className="breakdown-summary-value">{getHoleTypeLabel(holeType)}</strong>
+            <strong className="breakdown-summary-value">{holeTypeLabel}</strong>
           </div>
 
           <div className="hole-detail-summary-item">

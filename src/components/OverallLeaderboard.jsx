@@ -46,14 +46,14 @@ export default function OverallLeaderboard({
 
       <div style={styles.list}>
         {leaderboard.map((team) => {
-          const isTopTeam = team.rank === 1
+          const podiumStyles = getPodiumStyles(team.rank)
 
           return (
             <article
               key={team.teamId}
               style={{
                 ...styles.card,
-                ...(isTopTeam ? styles.topCard : null),
+                ...(podiumStyles.cardStyle || null),
               }}
             >
               <div style={styles.cardTop}>
@@ -61,7 +61,7 @@ export default function OverallLeaderboard({
                   <div
                     style={{
                       ...styles.rankBadge,
-                      ...(isTopTeam ? styles.topRankBadge : null),
+                      ...(podiumStyles.badgeStyle || null),
                     }}
                   >
                     #{team.rank}
@@ -118,6 +118,28 @@ function formatMembers(members) {
   return members.filter(Boolean).join(' • ')
 }
 
+function getPodiumStyles(rank) {
+  switch (rank) {
+    case 1:
+      return {
+        cardStyle: styles.goldCard,
+        badgeStyle: styles.goldRankBadge,
+      }
+    case 2:
+      return {
+        cardStyle: styles.silverCard,
+        badgeStyle: styles.silverRankBadge,
+      }
+    case 3:
+      return {
+        cardStyle: styles.bronzeCard,
+        badgeStyle: styles.bronzeRankBadge,
+      }
+    default:
+      return {}
+  }
+}
+
 const styles = {
   section: {
     display: 'grid',
@@ -151,9 +173,17 @@ const styles = {
     padding: 14,
     boxShadow: '0 8px 18px rgba(8, 31, 18, 0.06)',
   },
-  topCard: {
+  goldCard: {
     borderColor: '#d9d2a7',
     background: '#fffcf4',
+  },
+  silverCard: {
+    borderColor: '#d2d8df',
+    background: '#fbfcfd',
+  },
+  bronzeCard: {
+    borderColor: '#e1c4af',
+    background: '#fff8f3',
   },
   cardTop: {
     display: 'grid',
@@ -176,8 +206,14 @@ const styles = {
     color: '#fff',
     fontWeight: 800,
   },
-  topRankBadge: {
+  goldRankBadge: {
     background: 'var(--gold-600)',
+  },
+  silverRankBadge: {
+    background: '#8794a1',
+  },
+  bronzeRankBadge: {
+    background: '#a86c49',
   },
   teamBlock: {
     minWidth: 0,

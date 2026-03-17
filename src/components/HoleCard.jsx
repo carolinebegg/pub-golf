@@ -3,8 +3,8 @@ import {
   calculateTeamAverageKegSeconds,
   formatHoleTimeRange,
   formatSeconds,
+  getHoleDisplayLabel,
   getEffectiveHoleType,
-  getHoleTypeLabel,
 } from '../lib/helpers'
 
 export default function HoleCard({
@@ -33,7 +33,7 @@ export default function HoleCard({
       ? calculateTeamAverageKegSeconds(teamEntries)
       : null
 
-  const typeDisplay = getHoleTypeDisplay(holeType)
+  const typeDisplay = getHoleTypeDisplay({ hole, holeType })
   const statusDisplay = getStatusDisplay(holeStatus)
 
   return (
@@ -92,10 +92,12 @@ export default function HoleCard({
   )
 }
 
-function getHoleTypeDisplay(holeType) {
+function getHoleTypeDisplay({ hole, holeType }) {
+  const typeLabel = getHoleDisplayLabel(hole, holeType)
+
   if (holeType === 'keg_stand') {
     return {
-      typeLabel: getHoleTypeLabel(holeType),
+      typeLabel,
       badgeStyle: {
         background: '#f8f1dc',
         color: '#6f5720',
@@ -106,7 +108,40 @@ function getHoleTypeDisplay(holeType) {
 
   if (holeType === 'pitcher') {
     return {
-      typeLabel: getHoleTypeLabel(holeType),
+      typeLabel,
+      badgeStyle: {
+        background: '#edf2ff',
+        color: '#284f92',
+        borderColor: '#c9d6f7',
+      },
+    }
+  }
+
+  if (hole?.has_bunker && hole?.has_water) {
+    return {
+      typeLabel: 'Bunker + Water',
+      badgeStyle: {
+        background: '#f1f5f7',
+        color: '#385463',
+        borderColor: '#cad7de',
+      },
+    }
+  }
+
+  if (hole?.has_bunker) {
+    return {
+      typeLabel: 'Bunker Hazard',
+      badgeStyle: {
+        background: '#f8f1dc',
+        color: '#6f5720',
+        borderColor: '#dfcf9f',
+      },
+    }
+  }
+
+  if (hole?.has_water) {
+    return {
+      typeLabel: 'Water Hazard',
       badgeStyle: {
         background: '#edf2ff',
         color: '#284f92',
@@ -116,7 +151,7 @@ function getHoleTypeDisplay(holeType) {
   }
 
   return {
-    typeLabel: getHoleTypeLabel(holeType),
+    typeLabel,
     badgeStyle: {
       background: '#eaf5ee',
       color: '#1f5a3a',

@@ -313,9 +313,9 @@ export default function KegStandSection({
                 </span>
                 <div style={styles.leaderboardInfo}>
                   <span style={styles.leaderboardName}>{row.teamLabel}</span>
-                  <span style={styles.leaderboardMeta}>Score {row.rankScore}</span>
+                  <span style={styles.leaderboardMeta}>{formatSeconds(row.average)}</span>
                 </div>
-                <span style={styles.leaderboardStat}>{formatSeconds(row.average)}</span>
+                <span style={styles.leaderboardStat}>+{row.rankScore}</span>
               </div>
             ))
           )}
@@ -422,16 +422,20 @@ const styles = {
     alignItems: 'center',
   },
   leaderboardToggle: {
+    display: 'flex',
+    justifyContent: 'center',
     paddingTop: 4,
   },
   leaderboardBtn: {
-    padding: '8px 16px',
-    borderRadius: 8,
+    padding: '13px 18px',
+    minHeight: 48,
+    minWidth: 170,
+    borderRadius: 12,
     border: '1.5px solid #2d6a4a',
-    background: 'transparent',
+    background: '#fff',
     color: '#2d6a4a',
-    fontWeight: 700,
-    fontSize: '0.88rem',
+    fontWeight: 800,
+    fontSize: '0.95rem',
     cursor: 'pointer',
   },
   leaderboardCard: {

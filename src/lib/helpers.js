@@ -271,6 +271,24 @@ export function getHoleTypeLabel(holeType) {
   }
 }
 
+export function getHoleDisplayLabel(hole, holeType = getEffectiveHoleType(hole)) {
+  if (holeType === 'standard') {
+    if (hole?.has_bunker && hole?.has_water) {
+      return 'Bunker + Water'
+    }
+
+    if (hole?.has_bunker) {
+      return 'Bunker Hazard'
+    }
+
+    if (hole?.has_water) {
+      return 'Water Hazard'
+    }
+  }
+
+  return getHoleTypeLabel(holeType)
+}
+
 export function formatHoleTimeRange(hole) {
   const start = hole?.start_time
   const end = hole?.end_time
@@ -367,6 +385,7 @@ export function buildOverallLeaderboardData({
           holeNumber: hole.hole_number,
           holeName: hole.bar_name,
           holeType,
+          displayTypeLabel: getHoleDisplayLabel(hole, holeType),
           score,
           details: {
             entries: teamEntries,
@@ -397,6 +416,7 @@ export function buildOverallLeaderboardData({
           holeNumber: hole.hole_number,
           holeName: hole.bar_name,
           holeType,
+          displayTypeLabel: getHoleDisplayLabel(hole, holeType),
           score,
           details: {
             finished_at: teamRankRow?.finished_at ?? null,
@@ -417,6 +437,7 @@ export function buildOverallLeaderboardData({
         holeNumber: hole.hole_number,
         holeName: hole.bar_name,
         holeType,
+        displayTypeLabel: getHoleDisplayLabel(hole, holeType),
         score,
         details: scoreRow,
       }
@@ -445,8 +466,25 @@ export function buildOverallLeaderboardData({
     return a.teamName.localeCompare(b.teamName)
   })
 
-  return leaderboardRows.map((row, index) => ({
-    ...row,
-    rank: index + 1,
-  }))
+  let lastScore = null
+  let lastHolesCompleted = null
+  let lastRank = 0
+
+  return leaderboardRows.map((row, index) => {
+    const sameStandingAsPrevious =
+      index > 0 &&
+      row.totalScore === lastScore &&
+      row.holesCompleted === lastHolesCompleted
+
+    const rank = sameStandingAsPrevious ? lastRank : index + 1
+
+    lastScore = row.totalScore
+    lastHolesCompleted = row.holesCompleted
+    lastRank = rank
+
+    return {
+      ...row,
+      rank,
+    }
+  })
 }

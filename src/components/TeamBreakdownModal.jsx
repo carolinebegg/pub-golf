@@ -66,7 +66,7 @@ export default function TeamBreakdownModal({ team = null, onClose }) {
             <article key={hole.holeId} className="breakdown-row">
               <div className="breakdown-row-main">
                 <h4 className="breakdown-row-title">Hole {hole.holeNumber} - {hole.holeName}</h4>
-                <p className="breakdown-row-type">{formatHoleType(hole.holeType)}</p>
+                <p className="breakdown-row-type">{hole.displayTypeLabel || formatHoleType(hole.holeType)}</p>
                 <p className="breakdown-row-detail">
                   {hole.score === null ? 'Not completed yet' : renderHoleDetails(hole)}
                 </p>
