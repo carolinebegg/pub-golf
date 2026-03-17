@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { buildOverallLeaderboardData, sortHolesByNumber } from './lib/helpers'
 import TeamLogin, { TEAM_LOGIN_STORAGE_KEY } from './components/TeamLogin'
-import HoleCard from './components/HoleCard'
-import OverallLeaderboard from './components/OverallLeaderboard'
+import LeaderboardView from './components/LeaderboardView'
+import HolesView from './components/HolesView'
+import TeamBreakdownModal from './components/TeamBreakdownModal'
 import './App.css'
 
 function isHoleComplete(holeType, holeState) {
@@ -39,11 +40,12 @@ export default function App() {
     }
   })
   const [expandedHoleId, setExpandedHoleId] = useState(null)
+  const [activeView, setActiveView] = useState('leaderboard')
+  const [breakdownTeamId, setBreakdownTeamId] = useState(null)
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
-  const holesSectionRef = useRef(null)
 
   async function loadAllData(showInitialLoader = true) {
     if (showInitialLoader) {
@@ -229,15 +231,37 @@ export default function App() {
     }
   }, [loggedInTeam, orderedHoles, holeDataById, loggedInTeamStanding])
 
+  const selectedBreakdownTeam = useMemo(() => {
+    if (!breakdownTeamId) return null
+
+    return overallLeaderboard.find((team) => team.teamId === breakdownTeamId) || null
+  }, [overallLeaderboard, breakdownTeamId])
+
+  function handleToggleHole(holeId) {
+    setExpandedHoleId((current) => (current === holeId ? null : holeId))
+  }
+
+  function handleSwitchView(nextView) {
+    setActiveView(nextView)
+    if (nextView !== 'leaderboard') {
+      setBreakdownTeamId(null)
+    }
+  }
+
+  function handleOpenBreakdown(teamId) {
+    setBreakdownTeamId(teamId)
+  }
+
+  function handleCloseBreakdown() {
+    setBreakdownTeamId(null)
+  }
+
   function handleEnterScore() {
+    setActiveView('holes')
+
     if (teamPanelSummary?.nextHoleId) {
       setExpandedHoleId(teamPanelSummary.nextHoleId)
     }
-
-    holesSectionRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
   }
 
   return (
@@ -262,54 +286,58 @@ export default function App() {
             onEnterScore={handleEnterScore}
           />
 
+          <div className="view-switch" role="tablist" aria-label="Switch between leaderboard and holes">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === 'leaderboard'}
+              className={`view-switch-button ${activeView === 'leaderboard' ? 'is-active' : ''}`}
+              onClick={() => handleSwitchView('leaderboard')}
+            >
+              Overall Leaderboard
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === 'holes'}
+              className={`view-switch-button ${activeView === 'holes' ? 'is-active' : ''}`}
+              onClick={() => handleSwitchView('holes')}
+            >
+              Holes
+            </button>
+          </div>
+
           {loading && <div className="app-card">Loading...</div>}
           {error && <div className="app-error">{error}</div>}
 
           {!loading && !error && (
             <>
-              <OverallLeaderboard
-                teams={teams}
-                holes={holes}
-                scores={scores}
-                kegStandEntries={kegStandEntries}
-                pitcherFinishes={pitcherFinishes}
-                leaderboardData={overallLeaderboard}
-              />
-
-              <section className="section-stack" id="holes-section" ref={holesSectionRef}>
-                <div className="section-header">
-                  <h2>Holes</h2>
-                </div>
-
-                <div className="hole-list">
-                  {orderedHoles.map((hole) => {
-                    const holeState = holeDataById[hole.id] || {
-                      existingScore: null,
-                      kegEntries: [],
-                      pitcherFinish: null,
-                    }
-
-                    return (
-                      <HoleCard
-                        key={hole.id}
-                        hole={hole}
-                        isExpanded={expandedHoleId === hole.id}
-                        onToggle={() =>
-                          setExpandedHoleId((current) => (current === hole.id ? null : hole.id))
-                        }
-                        selectedTeam={loggedInTeam}
-                        allTeams={teams}
-                        existingScore={holeState.existingScore}
-                        kegEntries={holeState.kegEntries}
-                        pitcherFinish={holeState.pitcherFinish}
-                        onChanged={refreshData}
-                      />
-                    )
-                  })}
-                </div>
-              </section>
+              {activeView === 'leaderboard' ? (
+                <LeaderboardView
+                  teams={teams}
+                  holes={holes}
+                  scores={scores}
+                  kegStandEntries={kegStandEntries}
+                  pitcherFinishes={pitcherFinishes}
+                  leaderboardData={overallLeaderboard}
+                  onOpenBreakdown={handleOpenBreakdown}
+                />
+              ) : (
+                <HolesView
+                  holes={orderedHoles}
+                  holeDataById={holeDataById}
+                  expandedHoleId={expandedHoleId}
+                  onToggleHole={handleToggleHole}
+                  selectedTeam={loggedInTeam}
+                  allTeams={teams}
+                  onChanged={refreshData}
+                />
+              )}
             </>
           )}
+
+          <TeamBreakdownModal team={selectedBreakdownTeam} onClose={handleCloseBreakdown} />
         </div>
       </div>
     </div>

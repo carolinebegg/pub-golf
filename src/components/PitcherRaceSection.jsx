@@ -187,12 +187,12 @@ export default function PitcherRaceSection({
 }
 
 const styles = {
-  wrap: { marginTop: 12, display: 'grid', gap: 12 },
+  wrap: { marginTop: 12, display: 'grid', gap: 10 },
   card: {
-    padding: 12,
+    padding: 11,
     borderRadius: 12,
     background: '#fff',
-    border: '1px solid #eee',
+    border: '1px solid #dde6de',
   },
   headingRow: {
     display: 'flex',
@@ -202,31 +202,34 @@ const styles = {
     flexWrap: 'wrap',
   },
   teamLabel: {
-    fontWeight: 600,
+    fontWeight: 700,
   },
   heading: {
     marginBottom: 8,
+    fontFamily: 'var(--font-display)',
+    fontWeight: 400,
+    color: '#194c31',
   },
   buttonRow: {
     display: 'flex',
-    gap: 10,
+    gap: 8,
     flexWrap: 'wrap',
   },
   button: {
-    padding: 12,
-    borderRadius: 10,
+    padding: 11,
+    borderRadius: 11,
     border: 'none',
-    background: '#111',
+    background: 'var(--green-600)',
     color: '#fff',
-    fontWeight: 600,
+    fontWeight: 800,
   },
   dangerButton: {
-    padding: 12,
-    borderRadius: 10,
+    padding: 11,
+    borderRadius: 11,
     border: '1px solid #b33',
     background: '#fff5f5',
     color: '#8a1f1f',
-    fontWeight: 600,
+    fontWeight: 700,
   },
   list: {
     display: 'grid',
@@ -236,8 +239,8 @@ const styles = {
   row: {
     padding: 10,
     background: '#fff',
-    borderRadius: 10,
-    border: '1px solid #eee',
+    borderRadius: 11,
+    border: '1px solid #dde6de',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -247,12 +250,12 @@ const styles = {
   emptyRow: {
     padding: 10,
     background: '#fafafa',
-    borderRadius: 10,
+    borderRadius: 11,
     border: '1px dashed #ddd',
     color: '#666',
   },
   muted: {
-    color: '#666',
+    color: '#5f6e65',
     margin: 0,
   },
   success: {
