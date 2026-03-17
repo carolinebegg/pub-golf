@@ -28,7 +28,7 @@ export default function OverallLeaderboard({
     return (
       <section style={styles.section}>
         <div style={styles.headerRow}>
-          <h2 style={styles.title}>Overall leaderboard</h2>
+          <h2 style={styles.title}>Overall Leaderboard</h2>
         </div>
         <div style={styles.emptyCard}>No teams yet.</div>
       </section>
@@ -38,7 +38,7 @@ export default function OverallLeaderboard({
   return (
     <section style={styles.section}>
       <div style={styles.headerRow}>
-        <h2 style={styles.title}>Overall leaderboard</h2>
+        <h2 style={styles.title}>Overall Leaderboard</h2>
         <div style={styles.subtitle}>
           Lowest total score wins
         </div>

@@ -3,6 +3,7 @@ import HoleCard from './HoleCard'
 export default function HolesView({
   holes = [],
   holeDataById = {},
+  holeStatusById = {},
   onOpenHoleDetails,
   selectedTeam = null,
 }) {
@@ -29,6 +30,7 @@ export default function HolesView({
               existingScore={holeState.existingScore}
               kegEntries={holeState.kegEntries}
               pitcherFinish={holeState.pitcherFinish}
+              holeStatus={holeStatusById[hole.id] || 'not-started'}
             />
           )
         })}

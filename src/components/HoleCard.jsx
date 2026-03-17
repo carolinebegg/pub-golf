@@ -1,7 +1,10 @@
 import {
   calculateStandardHoleScore,
   calculateTeamAverageKegSeconds,
+  formatHoleTimeRange,
   formatSeconds,
+  getEffectiveHoleType,
+  getHoleTypeLabel,
 } from '../lib/helpers'
 
 export default function HoleCard({
@@ -11,8 +14,9 @@ export default function HoleCard({
   existingScore = null,
   kegEntries = [],
   pitcherFinish = null,
+  holeStatus = 'not-started',
 }) {
-  const holeType = hole?.hole_type || 'standard'
+  const holeType = getEffectiveHoleType(hole)
 
   const teamEntries =
     selectedTeam && holeType === 'keg_stand'
@@ -29,14 +33,8 @@ export default function HoleCard({
       ? calculateTeamAverageKegSeconds(teamEntries)
       : null
 
-  const isCompleted =
-    holeType === 'keg_stand'
-      ? teamEntries.length > 0
-      : holeType === 'pitcher'
-      ? Boolean(pitcherFinish)
-      : Boolean(existingScore)
-
   const typeDisplay = getHoleTypeDisplay(holeType)
+  const statusDisplay = getStatusDisplay(holeStatus)
 
   return (
     <div style={styles.card}>
@@ -48,15 +46,8 @@ export default function HoleCard({
           </div>
 
           <div style={styles.rightBlock}>
-            <span
-              style={{
-                ...styles.holeTypeBadge,
-                background: typeDisplay.badgeBg,
-                color: typeDisplay.badgeColor,
-                borderColor: typeDisplay.badgeBorder,
-              }}
-            >
-              {typeDisplay.label}
+            <span style={styles.holeTypeBadge}>
+              {typeDisplay.typeLabel}
             </span>
           </div>
         </div>
@@ -65,18 +56,14 @@ export default function HoleCard({
           <div style={styles.time}>{formatHoleTimeRange(hole)}</div>
 
           <div style={styles.statusBlock}>
-            {selectedTeam ? (
-              <span
-                style={{
-                  ...styles.statusBadge,
-                  ...(isCompleted ? styles.statusBadgeComplete : styles.statusBadgePending),
-                }}
-              >
-                {isCompleted ? 'Completed' : 'Pending'}
-              </span>
-            ) : (
-              <span style={styles.statusBadge}>Login required</span>
-            )}
+            <span
+              style={{
+                ...styles.statusBadge,
+                ...statusDisplay.style,
+              }}
+            >
+              {statusDisplay.label}
+            </span>
 
             {selectedTeam && holeType === 'standard' && existingScore ? (
               <span style={styles.scoreBadge}>Score {standardPreviewScore}</span>
@@ -87,7 +74,7 @@ export default function HoleCard({
             ) : null}
 
             {selectedTeam && holeType === 'pitcher' && pitcherFinish ? (
-              <span style={styles.scoreBadge}>Finish saved</span>
+              <span style={styles.scoreBadge}>Finish recorded</span>
             ) : null}
           </div>
         </div>
@@ -101,49 +88,30 @@ export default function HoleCard({
 }
 
 function getHoleTypeDisplay(holeType) {
-  switch (holeType) {
-    case 'keg_stand':
-      return {
-        label: 'Keg Stand',
-        badgeBg: '#f8f1dc',
-        badgeColor: '#6f5720',
-        badgeBorder: '#dfcf9f',
-      }
-    case 'pitcher':
-      return {
-        label: 'Pitcher Race',
-        badgeBg: '#edf2ff',
-        badgeColor: '#284f92',
-        badgeBorder: '#c9d6f7',
-      }
-    case 'standard':
-    default:
-      return {
-        label: 'Standard',
-        badgeBg: '#eaf5ee',
-        badgeColor: '#1f5a3a',
-        badgeBorder: '#cce0d0',
-      }
+  return {
+    typeLabel: getHoleTypeLabel(holeType),
   }
 }
 
-function formatHoleTimeRange(hole) {
-  const start = hole?.start_time
-  const end = hole?.end_time
-
-  if (start && end) {
-    return `${start} - ${end}`
+function getStatusDisplay(status) {
+  switch (status) {
+    case 'completed':
+      return {
+        label: 'Completed',
+        style: styles.statusBadgeComplete,
+      }
+    case 'in-progress':
+      return {
+        label: 'In progress',
+        style: styles.statusBadgeInProgress,
+      }
+    case 'not-started':
+    default:
+      return {
+        label: 'Not started',
+        style: styles.statusBadgeNotStarted,
+      }
   }
-
-  if (start) {
-    return start
-  }
-
-  if (end) {
-    return `Until ${end}`
-  }
-
-  return 'Time not set'
 }
 
 const styles = {
@@ -186,8 +154,9 @@ const styles = {
     fontWeight: 800,
   },
   holeTypeBadge: {
-    borderWidth: 1,
-    borderStyle: 'solid',
+    border: '1px solid #d6dfd7',
+    background: '#f4f8f4',
+    color: '#335246',
     borderRadius: 999,
     padding: '5px 10px',
     fontSize: '0.76rem',
@@ -214,8 +183,7 @@ const styles = {
     flexWrap: 'wrap',
   },
   statusBadge: {
-    background: '#f4f8f4',
-    border: '1px solid #d6dfd7',
+    border: '1px solid',
     color: '#335246',
     padding: '5px 9px',
     borderRadius: 999,
@@ -227,10 +195,15 @@ const styles = {
     borderColor: '#cce0d0',
     color: '#1f5a3a',
   },
-  statusBadgePending: {
-    background: '#f8f3e6',
-    borderColor: '#e5d8b5',
-    color: '#745f24',
+  statusBadgeInProgress: {
+    background: '#f0f5f1',
+    borderColor: '#d8e1da',
+    color: '#2d4d3c',
+  },
+  statusBadgeNotStarted: {
+    background: '#f6f7f6',
+    borderColor: '#d9ddda',
+    color: '#5f6e65',
   },
   scoreBadge: {
     background: '#f4f8f4',
@@ -248,6 +221,7 @@ const styles = {
     fontWeight: 800,
     borderRadius: 10,
     padding: 11,
+    minHeight: 44,
     fontSize: '0.84rem',
     cursor: 'pointer',
   },

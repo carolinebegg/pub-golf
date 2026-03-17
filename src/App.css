@@ -240,6 +240,7 @@ p {
 .primary-button,
 .secondary-button {
   padding: 11px 14px;
+  min-height: 44px;
   border-radius: 11px;
   border: 1px solid transparent;
   font-weight: 800;
@@ -303,6 +304,7 @@ p {
   color: #365446;
   border-radius: 999px;
   padding: 9px 14px;
+  min-height: 44px;
   font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
@@ -377,69 +379,16 @@ p {
 }
 
 .hole-detail-summary {
-  background: linear-gradient(to right, #f7faf8, #fdf9ef);
+  background: #f8fbf8;
 }
 
 .hole-detail-scroll {
-  padding-bottom: 22px;
+  padding-bottom: 20px;
+  gap: 10px;
 }
 
-.hole-modal-section {
-  border: 1px solid #dde6de;
-  border-radius: 12px;
-  background: #fff;
-  padding: 12px;
-}
-
-.hole-modal-heading {
-  margin: 0;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #5e7167;
-}
-
-.hole-modal-copy {
-  margin-top: 6px;
-  color: #2f4237;
-  line-height: 1.42;
-  font-size: 0.92rem;
-}
-
-.hole-type-panel {
-  border-width: 1px;
-  border-style: solid;
-  border-radius: 13px;
-  padding: 12px;
-  background: #fff;
-}
-
-.standard-hole-panel {
-  border-color: #d9e6dc;
-  background: #f9fcfa;
-}
-
-.keg-hole-panel {
-  border-color: #e1d4ae;
-  background: #fffcf4;
-}
-
-.pitcher-hole-panel {
-  border-color: #ced9f4;
-  background: #f6f8ff;
-}
-
-.compact-info-section {
-  background: #f5faf6;
-  border-color: #dbe5dd;
-  color: #224434;
-}
-
-.warning-info-section {
-  background: #fff7e6;
-  border-color: #ecd8a8;
-  color: #6b5a22;
-  font-weight: 700;
+.hole-detail-row {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .breakdown-modal-header {
@@ -476,8 +425,8 @@ p {
   border: 1px solid #ced8d0;
   background: #fff;
   color: #294637;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   border-radius: 999px;
   font-weight: 800;
   line-height: 1;
@@ -515,7 +464,7 @@ p {
   overflow-y: auto;
   padding: 0 20px 20px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .breakdown-row {
@@ -607,5 +556,38 @@ p {
 
   .breakdown-modal-summary {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell {
+    padding: 14px 10px 30px;
+  }
+
+  .breakdown-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .breakdown-modal {
+    width: 100%;
+    max-height: 94vh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .hole-details-modal {
+    width: 100%;
+  }
+
+  .breakdown-modal-header {
+    padding: 14px 16px 10px;
+  }
+
+  .breakdown-modal-summary {
+    margin: 0 16px 10px;
+  }
+
+  .breakdown-modal-scroll {
+    padding: 0 16px 16px;
   }
 }

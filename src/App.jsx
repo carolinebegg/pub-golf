@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './lib/supabase'
-import { buildOverallLeaderboardData, sortHolesByNumber } from './lib/helpers'
+import {
+  buildOverallLeaderboardData,
+  getEffectiveHoleType,
+  sortHolesByNumber,
+} from './lib/helpers'
 import TeamLogin, { TEAM_LOGIN_STORAGE_KEY } from './components/TeamLogin'
 import LeaderboardView from './components/LeaderboardView'
 import HolesView from './components/HolesView'
@@ -8,8 +12,10 @@ import TeamBreakdownModal from './components/TeamBreakdownModal'
 import HoleDetailsModal from './components/HoleDetailsModal'
 import './App.css'
 
-function isHoleComplete(holeType, holeState) {
+function isHoleComplete(hole, holeState) {
   if (!holeState) return false
+
+  const holeType = getEffectiveHoleType(hole)
 
   switch (holeType) {
     case 'keg_stand':
@@ -177,6 +183,39 @@ export default function App() {
 
   const orderedHoles = useMemo(() => sortHolesByNumber(holes), [holes])
 
+  const holeStatusById = useMemo(() => {
+    const byId = {}
+
+    if (!orderedHoles.length) {
+      return byId
+    }
+
+    if (!loggedInTeam?.id) {
+      for (const hole of orderedHoles) {
+        byId[hole.id] = 'not-started'
+      }
+
+      return byId
+    }
+
+    let inProgressAssigned = false
+
+    for (const hole of orderedHoles) {
+      const complete = isHoleComplete(hole, holeDataById[hole.id])
+
+      if (complete) {
+        byId[hole.id] = 'completed'
+      } else if (!inProgressAssigned) {
+        byId[hole.id] = 'in-progress'
+        inProgressAssigned = true
+      } else {
+        byId[hole.id] = 'not-started'
+      }
+    }
+
+    return byId
+  }, [orderedHoles, loggedInTeam, holeDataById])
+
   const overallLeaderboard = useMemo(
     () =>
       buildOverallLeaderboardData({
@@ -199,25 +238,18 @@ export default function App() {
     if (!loggedInTeam?.id) return null
 
     const totalHoles = orderedHoles.length
-    let completedHoles = 0
-    let nextHole = null
-
-    for (const hole of orderedHoles) {
-      const complete = isHoleComplete(hole.hole_type, holeDataById[hole.id])
-
-      if (complete) {
-        completedHoles += 1
-      } else if (!nextHole) {
-        nextHole = hole
-      }
-    }
+    const completedHoles = orderedHoles.filter(
+      (hole) => holeStatusById[hole.id] === 'completed'
+    ).length
+    const inProgressHole =
+      orderedHoles.find((hole) => holeStatusById[hole.id] === 'in-progress') || null
 
     const hasHoles = totalHoles > 0
     const finishedAllHoles = hasHoles && completedHoles === totalHoles
     const currentHoleName = hasHoles
       ? finishedAllHoles
         ? 'All holes complete'
-        : nextHole?.bar_name || 'Next hole pending'
+        : inProgressHole?.bar_name || 'Next hole pending'
       : 'No holes yet'
 
     return {
@@ -228,9 +260,9 @@ export default function App() {
       currentHoleName,
       completedHoles,
       totalHoles,
-      nextHoleId: nextHole?.id ?? null,
+      nextHoleId: inProgressHole?.id ?? null,
     }
-  }, [loggedInTeam, orderedHoles, holeDataById, loggedInTeamStanding])
+  }, [loggedInTeam, orderedHoles, holeStatusById, loggedInTeamStanding])
 
   const selectedBreakdownTeam = useMemo(() => {
     if (!breakdownTeamId) return null
@@ -355,6 +387,7 @@ export default function App() {
                 <HolesView
                   holes={orderedHoles}
                   holeDataById={holeDataById}
+                  holeStatusById={holeStatusById}
                   onOpenHoleDetails={handleOpenHoleDetails}
                   selectedTeam={loggedInTeam}
                 />

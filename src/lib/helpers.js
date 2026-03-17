@@ -238,6 +238,59 @@ export function sortHolesByNumber(holes = []) {
 }
 
 /**
+ * Resolve hole type used by UI + scoring logic.
+ * Holes 2 and 9 are always pitcher race holes.
+ */
+export function getEffectiveHoleType(hole) {
+  const holeNumber = toNumber(hole?.hole_number, null)
+
+  if (holeNumber === 2 || holeNumber === 9) {
+    return 'pitcher'
+  }
+
+  if (hole?.hole_type === 'keg_stand') {
+    return 'keg_stand'
+  }
+
+  if (hole?.hole_type === 'pitcher') {
+    return 'pitcher'
+  }
+
+  return 'standard'
+}
+
+export function getHoleTypeLabel(holeType) {
+  switch (holeType) {
+    case 'keg_stand':
+      return 'Keg Stand'
+    case 'pitcher':
+      return 'Pitcher Race'
+    case 'standard':
+    default:
+      return 'Standard'
+  }
+}
+
+export function formatHoleTimeRange(hole) {
+  const start = hole?.start_time
+  const end = hole?.end_time
+
+  if (start && end) {
+    return `${start} - ${end}`
+  }
+
+  if (start) {
+    return start
+  }
+
+  if (end) {
+    return `Until ${end}`
+  }
+
+  return 'Time not set'
+}
+
+/**
  * Currency formatter for prices.
  */
 export function formatCurrency(value, currency = 'EUR') {
@@ -288,7 +341,7 @@ export function buildOverallLeaderboardData({
     let holesCompleted = 0
 
     const holeBreakdown = sortedHoles.map((hole) => {
-      const holeType = hole?.hole_type || 'standard'
+      const holeType = getEffectiveHoleType(hole)
 
       if (holeType === 'keg_stand') {
         const entriesForHole = kegStandEntries.filter(

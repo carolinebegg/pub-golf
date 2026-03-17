@@ -58,6 +58,11 @@ export default function PitcherRaceSection({
       return
     }
 
+    if (myFinish) {
+      setMessage('Finish already recorded. Use reset if you need to submit again.')
+      return
+    }
+
     setSaving(true)
     setError('')
     setMessage('')
@@ -81,7 +86,7 @@ export default function PitcherRaceSection({
       return
     }
 
-    setMessage(myFinish ? 'Finish time updated.' : 'Pitcher finish saved.')
+    setMessage('Pitcher finish recorded.')
     await loadFinishesForHole()
     setSaving(false)
 
@@ -90,10 +95,10 @@ export default function PitcherRaceSection({
     }
   }
 
-  async function deleteFinish() {
+  async function resetFinish() {
     if (!myFinish?.id) return
 
-    const confirmed = window.confirm('Delete your team’s pitcher finish?')
+    const confirmed = window.confirm('Reset your team finish so it can be submitted again?')
     if (!confirmed) return
 
     setSaving(true)
@@ -111,7 +116,7 @@ export default function PitcherRaceSection({
       return
     }
 
-    setMessage('Pitcher finish deleted.')
+    setMessage('Finish reset. You can record it again.')
     await loadFinishesForHole()
     setSaving(false)
 
@@ -125,69 +130,80 @@ export default function PitcherRaceSection({
       const t = allTeams.find((teamRow) => teamRow.id === row.team_id)
       return {
         ...row,
-        teamLabel: t
-          ? `Team ${t.team_number}: ${t.theme || t.name}`
-          : 'Unknown team',
+        teamLabel: t ? (t.theme || t.name || `Team ${t.team_number}`) : 'Unknown team',
       }
     })
   }, [finishes, allTeams])
 
+  const myLeaderboardRow = useMemo(() => {
+    return leaderboard.find((row) => row.team_id === team.id) || null
+  }, [leaderboard, team.id])
+
   return (
     <div style={styles.wrap}>
-      <section style={styles.card}>
-        <div style={styles.headingRow}>
-          <strong>Your team</strong>
-          <span style={styles.teamLabel}>{team.name}</span>
-        </div>
+      <section style={styles.actionBlock}>
+        <p style={styles.helperText}>
+          Tap once when your team finishes the pitcher. First finish gets 0, then +1, +2, and so on.
+        </p>
 
         {myFinish ? (
-          <p style={styles.muted}>
-            Finished at: {new Date(myFinish.finished_at).toLocaleTimeString()}
+          <p style={styles.confirmText}>
+            Finish recorded at <strong>{new Date(myFinish.finished_at).toLocaleTimeString()}</strong>
+            {myLeaderboardRow ? ` • Place #${myLeaderboardRow.rankScore + 1}` : ''}
           </p>
         ) : (
           <p style={styles.muted}>No finish recorded yet.</p>
         )}
 
-        <p style={styles.helperText}>
-          First team to finish gets the best score. Times are ranked automatically.
-        </p>
-
         <div style={styles.buttonRow}>
-          <button type="button" onClick={markFinished} disabled={saving || loading} style={styles.button}>
-            {saving
-              ? 'Saving...'
-              : myFinish
-              ? 'Update to current time'
-              : 'We finished our pitcher'}
+          <button
+            type="button"
+            onClick={markFinished}
+            disabled={saving || loading || Boolean(myFinish)}
+            style={styles.button}
+          >
+            {saving ? 'Saving...' : myFinish ? 'Finish recorded' : 'Finish pitcher'}
           </button>
 
-          {myFinish && (
-            <button type="button" onClick={deleteFinish} disabled={saving || loading} style={styles.dangerButton}>
-              {saving ? 'Working...' : 'Delete finish'}
+          {myFinish ? (
+            <button
+              type="button"
+              onClick={resetFinish}
+              disabled={saving || loading}
+              style={styles.secondaryButton}
+            >
+              {saving ? 'Working...' : 'Reset finish'}
             </button>
-          )}
+          ) : null}
         </div>
       </section>
 
       <section style={styles.resultsPanel}>
-        <h3 style={styles.heading}>Pitcher finish order</h3>
+        <h3 style={styles.heading}>Finish leaderboard</h3>
 
         {loading ? (
-          <p>Loading...</p>
+          <p style={styles.muted}>Loading...</p>
         ) : (
-          <div style={styles.list}>
-            {leaderboard.map((row, index) => (
-              <div key={row.id} style={styles.row}>
-                <div>
-                  #{index + 1} — {row.teamLabel} → hole score {row.rankScore}
-                </div>
-                <div style={styles.muted}>
-                  {new Date(row.finished_at).toLocaleTimeString()}
-                </div>
+          <div style={styles.table}>
+            <div style={styles.tableHeader}>
+              <span>Rank</span>
+              <span>Team</span>
+              <span>Time</span>
+              <span>Score</span>
+            </div>
+
+            {leaderboard.map((row) => (
+              <div key={row.id} style={styles.tableRow}>
+                <span style={styles.rankCell}>#{row.rankScore + 1}</span>
+                <span style={styles.teamCell}>{row.teamLabel}</span>
+                <span style={styles.timeCell}>{new Date(row.finished_at).toLocaleTimeString()}</span>
+                <span style={styles.scoreCell}>{row.rankScore}</span>
               </div>
             ))}
 
-            {!leaderboard.length && <div style={styles.emptyRow}>No teams have finished yet.</div>}
+            {!leaderboard.length ? (
+              <div style={styles.emptyRow}>No finishes yet. Use the button above to record the first finish.</div>
+            ) : null}
           </div>
         )}
       </section>
@@ -199,42 +215,28 @@ export default function PitcherRaceSection({
 }
 
 const styles = {
-  wrap: { marginTop: 12, display: 'grid', gap: 10 },
-  card: {
-    padding: 11,
-    borderRadius: 12,
-    background: '#f6f8ff',
-    border: '1px solid #ced9f4',
+  wrap: { marginTop: 8, display: 'grid', gap: 10 },
+  actionBlock: {
     display: 'grid',
     gap: 8,
-  },
-  resultsPanel: {
-    padding: 11,
-    borderRadius: 12,
-    background: '#fff',
-    border: '1px solid #dde6de',
-  },
-  headingRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  teamLabel: {
-    fontWeight: 700,
-  },
-  heading: {
-    marginBottom: 8,
-    fontFamily: 'var(--font-display)',
-    fontWeight: 400,
-    color: '#194c31',
+    padding: 8,
+    borderBottom: '1px solid #dde6de',
   },
   helperText: {
     margin: 0,
-    color: '#4b5a82',
-    fontSize: '0.88rem',
+    color: '#4b5f54',
+    fontSize: '0.9rem',
+    lineHeight: 1.36,
+  },
+  confirmText: {
+    margin: 0,
+    color: '#214634',
+    fontSize: '0.9rem',
     lineHeight: 1.34,
+  },
+  muted: {
+    color: '#5f6e65',
+    margin: 0,
   },
   buttonRow: {
     display: 'flex',
@@ -242,54 +244,90 @@ const styles = {
     flexWrap: 'wrap',
   },
   button: {
-    padding: 11,
+    padding: '11px 14px',
+    minHeight: 44,
     borderRadius: 11,
     border: 'none',
     background: 'var(--green-600)',
     color: '#fff',
     fontWeight: 800,
   },
-  dangerButton: {
-    padding: 11,
+  secondaryButton: {
+    padding: '11px 14px',
+    minHeight: 44,
     borderRadius: 11,
-    border: '1px solid #b33',
-    background: '#fff5f5',
-    color: '#8a1f1f',
+    border: '1px solid #ced8d0',
+    background: '#fff',
+    color: '#294637',
     fontWeight: 700,
   },
-  list: {
+  resultsPanel: {
     display: 'grid',
     gap: 8,
-    marginTop: 10,
+    padding: 8,
   },
-  row: {
-    padding: 10,
-    background: '#fff',
-    borderRadius: 11,
-    border: '1px solid #dde6de',
-    display: 'flex',
-    justifyContent: 'space-between',
+  heading: {
+    margin: 0,
+    fontSize: '0.95rem',
+    color: '#194c31',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    fontWeight: 800,
+  },
+  table: {
+    display: 'grid',
+    gap: 6,
+  },
+  tableHeader: {
+    display: 'grid',
+    gridTemplateColumns: '56px minmax(0, 1fr) auto 52px',
+    gap: 8,
+    color: '#6a7d72',
+    fontSize: '0.74rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    fontWeight: 800,
+  },
+  tableRow: {
+    display: 'grid',
+    gridTemplateColumns: '56px minmax(0, 1fr) auto 52px',
+    gap: 8,
     alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
+    padding: '9px 0',
+    borderTop: '1px solid #e4ece6',
+    fontSize: '0.9rem',
+  },
+  rankCell: {
+    color: '#1f5a3a',
+    fontWeight: 800,
+  },
+  teamCell: {
+    color: '#1f3027',
+    fontWeight: 700,
+    minWidth: 0,
+  },
+  timeCell: {
+    color: '#5f6e65',
+    whiteSpace: 'nowrap',
+  },
+  scoreCell: {
+    color: '#1f5a3a',
+    fontWeight: 800,
+    textAlign: 'right',
   },
   emptyRow: {
-    padding: 10,
-    background: '#fafafa',
-    borderRadius: 11,
-    border: '1px dashed #ddd',
     color: '#666',
-  },
-  muted: {
-    color: '#5f6e65',
-    margin: 0,
+    fontSize: '0.88rem',
+    paddingTop: 6,
   },
   success: {
     color: '#17663a',
     margin: 0,
+    fontWeight: 700,
   },
   error: {
     color: '#a12626',
     margin: 0,
+    fontWeight: 700,
   },
 }

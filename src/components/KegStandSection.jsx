@@ -195,11 +195,9 @@ export default function KegStandSection({
 
   return (
     <div style={styles.wrap}>
-      <section style={styles.panel}>
+      <section style={styles.primaryAction}>
         <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.sectionTitle}>
-            {editingEntryId ? 'Edit keg stand entry' : 'Add keg stand entry'}
-          </div>
+          <h5 style={styles.sectionTitle}>{editingEntryId ? 'Edit entry' : 'Add entry'}</h5>
 
           <label style={styles.fieldLabel}>
             Team member
@@ -240,7 +238,7 @@ export default function KegStandSection({
                 ? 'Saving...'
                 : editingEntryId
                 ? 'Update entry'
-                : 'Add entry'}
+                : 'Add keg entry'}
             </button>
 
             {editingEntryId ? (
@@ -253,18 +251,18 @@ export default function KegStandSection({
       </section>
 
       {teamAverage !== null && (
-        <div style={styles.teamAverageCard}>
+        <p style={styles.teamAverageCard}>
           Your team average: <strong>{formatSeconds(teamAverage)}</strong>
-        </div>
+        </p>
       )}
 
       {teamEntries.length > 0 && (
-        <section style={styles.panel}>
+        <section style={styles.simpleSection}>
           <h3 style={styles.heading}>Your team entries</h3>
           <div style={styles.list}>
             {teamEntries.map((entry) => (
               <div key={entry.id} style={styles.row}>
-                <div>
+                <div style={styles.rowText}>
                   <strong>{entry.member_name}</strong> — {formatSeconds(entry.seconds)}
                 </div>
                 <div style={styles.rowActions}>
@@ -312,7 +310,7 @@ export default function KegStandSection({
                 <div style={styles.list}>
                   {enrichedEntries.map((entry, index) => (
                     <div key={entry.id} style={styles.row}>
-                      #{index + 1} — {entry.member_name}: {formatSeconds(entry.seconds)} ({entry.teamLabel})
+                      <span style={styles.rowText}>#{index + 1} — {entry.member_name}: {formatSeconds(entry.seconds)} ({entry.teamLabel})</span>
                     </div>
                   ))}
                   {!enrichedEntries.length && <div style={styles.emptyRow}>No entries yet.</div>}
@@ -325,8 +323,7 @@ export default function KegStandSection({
               <div style={styles.list}>
                 {teamLeaderboard.map((row, index) => (
                   <div key={row.team_id} style={styles.row}>
-                    #{index + 1} — {row.teamLabel}: {formatSeconds(row.average)} avg → hole score{' '}
-                    {row.rankScore}
+                    <span style={styles.rowText}>#{index + 1} — {row.teamLabel}: {formatSeconds(row.average)} avg → hole score {row.rankScore}</span>
                   </div>
                 ))}
                 {!teamLeaderboard.length && <div style={styles.emptyRow}>No team results yet.</div>}
@@ -345,26 +342,38 @@ export default function KegStandSection({
 }
 
 const styles = {
-  wrap: { marginTop: 12, display: 'grid', gap: 10 },
-  panel: {
+  wrap: { marginTop: 8, display: 'grid', gap: 10 },
+  primaryAction: {
+    background: '#fff',
+    borderRadius: 12,
+    padding: 10,
+    border: '1px solid #dde6de',
+  },
+  simpleSection: {
+    padding: '2px 0',
+    display: 'grid',
+    gap: 8,
+  },
+  resultsPanel: {
     background: '#fff',
     border: '1px solid #dde6de',
     borderRadius: 12,
-    padding: 11,
-  },
-  resultsPanel: {
-    background: '#fffcf4',
-    border: '1px solid #e1d4ae',
-    borderRadius: 12,
-    padding: 11,
+    padding: 10,
     display: 'grid',
     gap: 9,
   },
-  form: { display: 'grid', gap: 9 },
-  sectionTitle: { fontWeight: 800, color: '#214534' },
+  form: { display: 'grid', gap: 8 },
+  sectionTitle: {
+    margin: 0,
+    fontSize: '0.92rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    color: '#5e7167',
+    fontWeight: 800,
+  },
   fieldLabel: {
     display: 'grid',
-    gap: 6,
+    gap: 5,
     fontSize: '0.9rem',
     color: '#2e4639',
     fontWeight: 700,
@@ -373,7 +382,7 @@ const styles = {
     padding: 11,
     borderRadius: 11,
     border: '1px solid #ccd6ce',
-    fontSize: 16,
+    fontSize: 15,
     background: '#fff',
   },
   buttonRow: {
@@ -382,7 +391,8 @@ const styles = {
     flexWrap: 'wrap',
   },
   button: {
-    padding: 11,
+    padding: '11px 14px',
+    minHeight: 44,
     borderRadius: 11,
     border: 'none',
     background: 'var(--green-600)',
@@ -390,50 +400,54 @@ const styles = {
     fontWeight: 800,
   },
   secondaryButton: {
-    padding: 11,
+    padding: '10px 12px',
+    minHeight: 40,
     borderRadius: 11,
     border: '1px solid #ced8d0',
     background: '#fff',
     fontWeight: 700,
   },
   smallSecondaryButton: {
-    padding: '8px 10px',
+    padding: '6px 8px',
     borderRadius: 9,
-    border: '1px solid #ced8d0',
-    background: '#fff',
-    fontWeight: 700,
+    border: '1px solid #d6e1d8',
+    background: '#f7fbf8',
+    color: '#30533f',
+    fontWeight: 600,
+    fontSize: '0.8rem',
   },
   smallDangerButton: {
-    padding: '8px 10px',
+    padding: '6px 8px',
     borderRadius: 9,
-    border: '1px solid #b33',
-    background: '#fff5f5',
+    border: '1px solid #e3c7c7',
+    background: '#fff',
     color: '#8a1f1f',
-    fontWeight: 700,
+    fontWeight: 600,
+    fontSize: '0.8rem',
   },
   teamAverageCard: {
-    padding: 11,
-    background: '#f5faf6',
-    borderRadius: 11,
-    border: '1px solid #dbe5dd',
+    margin: 0,
     color: '#264736',
+    fontSize: '0.9rem',
   },
   subsection: {
     display: 'grid',
-    gap: 8,
+    gap: 6,
   },
   subHeading: {
     margin: 0,
     fontSize: '0.84rem',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
-    color: '#6f5720',
+    color: '#6a7d72',
   },
   heading: {
     margin: 0,
-    fontFamily: 'var(--font-display)',
-    fontWeight: 400,
+    fontSize: '0.94rem',
     color: '#194c31',
+    fontWeight: 800,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
   resultsHeader: {
     display: 'flex',
@@ -444,31 +458,32 @@ const styles = {
   },
   list: { display: 'grid', gap: 8 },
   row: {
-    padding: 10,
-    background: '#fff',
-    borderRadius: 11,
-    border: '1px solid #dde6de',
+    padding: '8px 0',
+    borderTop: '1px solid #e7efe8',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 10,
     flexWrap: 'wrap',
   },
+  rowText: {
+    color: '#2c4236',
+    fontSize: '0.9rem',
+    lineHeight: 1.35,
+  },
   rowActions: {
     display: 'flex',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
   },
   emptyRow: {
-    padding: 10,
-    background: '#fafafa',
-    borderRadius: 11,
-    border: '1px dashed #ddd',
+    padding: '8px 0',
     color: '#666',
+    fontSize: '0.88rem',
   },
   helperCopy: {
     margin: 0,
-    color: '#7c6731',
+    color: '#5f6e65',
     fontSize: '0.88rem',
   },
   success: {
