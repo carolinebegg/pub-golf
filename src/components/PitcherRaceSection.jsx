@@ -16,6 +16,7 @@ export default function PitcherRaceSection({
   const [myFinish, setMyFinish] = useState(pitcherFinish)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const canViewLeaderboard = Boolean(myFinish)
 
   const loadFinishesForHole = useCallback(async (holeIdParam = hole?.id) => {
     if (!holeIdParam) return
@@ -125,11 +126,9 @@ export default function PitcherRaceSection({
     }
 
     setMyFinish(null)
+    setShowResults(false)
+    setFinishes([])
     setMessage('Finish reset. You can record it again.')
-
-    if (showResults) {
-      await loadFinishesForHole()
-    }
 
     setSaving(false)
 
@@ -139,6 +138,10 @@ export default function PitcherRaceSection({
   }
 
   async function toggleResults() {
+    if (!canViewLeaderboard) {
+      return
+    }
+
     if (showResults) {
       setShowResults(false)
       return
@@ -179,30 +182,32 @@ export default function PitcherRaceSection({
             {saving ? 'Saving...' : myFinish ? 'Finish recorded' : 'Finish pitcher'}
           </button>
 
-          {myFinish ? (
-            <button
-              type="button"
-              onClick={resetFinish}
-              disabled={saving}
-              style={styles.secondaryButton}
-            >
-              {saving ? 'Working...' : 'Reset finish'}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            disabled={!canViewLeaderboard}
+            style={{
+              ...styles.leaderboardBtn,
+              ...(!canViewLeaderboard ? styles.leaderboardBtnDisabled : null),
+            }}
+            onClick={() => {
+              void toggleResults()
+            }}
+          >
+            {showResults ? '🏆 Hide leaderboard' : '🏆 Leaderboard'}
+          </button>
         </div>
-      </section>
 
-      <div style={styles.leaderboardToggle}>
-        <button
-          type="button"
-          style={styles.leaderboardBtn}
-          onClick={() => {
-            void toggleResults()
-          }}
-        >
-          {showResults ? 'Hide leaderboard' : '🏆 Leaderboard'}
-        </button>
-      </div>
+        {myFinish ? (
+          <button
+            type="button"
+            onClick={resetFinish}
+            disabled={saving}
+            style={styles.secondaryButton}
+          >
+            {saving ? 'Working...' : 'Reset finish'}
+          </button>
+        ) : null}
+      </section>
 
       {showResults && (
         <div style={styles.leaderboardCard}>
@@ -238,24 +243,28 @@ const styles = {
   wrap: { marginTop: 4, display: 'grid', gap: 12 },
   actionBlock: {
     display: 'grid',
-    gap: 8,
+    gap: 10,
     paddingTop: 4,
+    justifyItems: 'center',
   },
   confirmText: {
     margin: 0,
     color: '#214634',
     fontSize: '0.9rem',
     lineHeight: 1.34,
+    textAlign: 'center',
   },
   buttonRow: {
     display: 'flex',
-    gap: 8,
+    gap: 10,
     flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   button: {
-    padding: '11px 14px',
-    minHeight: 44,
-    borderRadius: 11,
+    padding: '13px 18px',
+    minHeight: 48,
+    minWidth: 170,
+    borderRadius: 12,
     border: 'none',
     background: 'var(--green-600)',
     color: '#fff',
@@ -269,19 +278,25 @@ const styles = {
     color: '#294637',
     fontWeight: 700,
     fontSize: '0.84rem',
-  },
-  leaderboardToggle: {
-    paddingTop: 4,
+    justifySelf: 'center',
   },
   leaderboardBtn: {
-    padding: '8px 16px',
-    borderRadius: 8,
+    padding: '13px 18px',
+    minHeight: 48,
+    minWidth: 170,
+    borderRadius: 12,
     border: '1.5px solid #2d6a4a',
-    background: 'transparent',
+    background: '#fff',
     color: '#2d6a4a',
-    fontWeight: 700,
-    fontSize: '0.88rem',
+    fontWeight: 800,
+    fontSize: '0.95rem',
     cursor: 'pointer',
+  },
+  leaderboardBtnDisabled: {
+    borderColor: '#ccd6ce',
+    background: '#f3f5f3',
+    color: '#97a29a',
+    cursor: 'not-allowed',
   },
   leaderboardCard: {
     border: '1.5px solid #b8d9c4',

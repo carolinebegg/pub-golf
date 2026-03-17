@@ -139,7 +139,6 @@ export default function HoleDetailsModal({
 
           {selectedTeam && holeType === 'pitcher' ? (
             <section className="hole-detail-section">
-              <h4 className="hole-detail-section-title">Finish pitcher</h4>
               <PitcherRaceSection
                 hole={hole}
                 team={selectedTeam}
@@ -157,7 +156,7 @@ export default function HoleDetailsModal({
 
 function getRuleCopy({ hole, holeType }) {
   if (holeType === 'pitcher') {
-    return 'Each team finishes one pitcher. Tap "Finish pitcher" once your team is done. Finish order sets score: 1st = 0, 2nd = +1, 3rd = +2, and so on.'
+    return hole?.rule_text || 'Each team finishes one pitcher. Tap "Finish pitcher" once your team is done. Finish order sets score: 1st = 0, 2nd = +1, 3rd = +2, and so on.'
   }
 
   if (holeType === 'keg_stand') {

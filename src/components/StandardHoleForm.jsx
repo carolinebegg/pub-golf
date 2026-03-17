@@ -70,8 +70,8 @@ export default function StandardHoleForm({
     }
 
     const parsedSips = Number(form.sips)
-    if (!Number.isFinite(parsedSips) || parsedSips < 0) {
-      setError('Enter a valid sip count (0 or more).')
+    if (!Number.isFinite(parsedSips) || parsedSips <= 0) {
+      setError('Enter a valid sip count (1 or more).')
       return
     }
 
@@ -167,12 +167,12 @@ export default function StandardHoleForm({
             <span style={styles.label}>Number of sips <em style={styles.requiredTag}>(required)</em></span>
             <input
               type="number"
-              min="0"
+              min="1"
               required
               value={form.sips}
               onChange={(e) => updateField('sips', e.target.value)}
               style={styles.input}
-              placeholder="0"
+              placeholder="1"
             />
           </label>
 
