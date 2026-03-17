@@ -1,6 +1,23 @@
 import { useEffect } from 'react'
 import { formatCurrency, formatSeconds } from '../lib/helpers'
 
+const SCORE_ADJUSTMENT_TOKENS = {
+  teamKaraoke: '[adj:team-karaoke]',
+  fadoBestGSplit: '[adj:fado-best-g-split]',
+  fadoWorstGSplit: '[adj:fado-worst-g-split]',
+}
+
+function stripAdjustmentTokens(notes) {
+  const raw = typeof notes === 'string' ? notes : ''
+
+  return raw
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.teamKaraoke, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export default function TeamBreakdownModal({ team = null, onClose }) {
   useEffect(() => {
     if (!team) return
@@ -118,6 +135,11 @@ function renderHoleDetails(hole) {
 
   const details = hole.details || {}
   const bits = []
+  const rawNotes = typeof details.notes === 'string' ? details.notes : ''
+
+  const hasTeamKaraoke = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.teamKaraoke)
+  const hasFadoBestGSplit = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit)
+  const hasFadoWorstGSplit = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit)
 
   if (details.drink_name) bits.push(details.drink_name)
   if (details.sips !== null && details.sips !== undefined) bits.push(`${details.sips} sips`)
@@ -130,16 +152,31 @@ function renderHoleDetails(hole) {
   if (details.spilled_drink) flags.push('spilled drink')
   if (details.threw_up) flags.push('threw up')
   if (details.photobooth_missing) flags.push('no photobooth proof')
-  if (details.split_g_bonus) flags.push(`Split the G bonus ${details.split_g_bonus}`)
-  if (details.bonus_penalty) flags.push(`bonus/penalty ${details.bonus_penalty}`)
+
+  if (hasTeamKaraoke) flags.push('team karaoke (-5)')
+  if (hasFadoBestGSplit) flags.push('best g split (-1)')
+  if (hasFadoWorstGSplit) flags.push('worst g split (+3)')
+
+  const adjustedSplitGBonus =
+    Number(details.split_g_bonus || 0) -
+    (hasFadoBestGSplit ? 1 : 0)
+
+  const adjustedBonusPenalty =
+    Number(details.bonus_penalty || 0) -
+    (hasTeamKaraoke ? -5 : 0) -
+    (hasFadoWorstGSplit ? 3 : 0)
+
+  if (adjustedSplitGBonus) flags.push(`Split the G bonus ${adjustedSplitGBonus}`)
+  if (adjustedBonusPenalty) flags.push(`bonus/penalty ${adjustedBonusPenalty}`)
 
   let text = bits.join(' • ')
   if (flags.length) {
     text = text ? `${text} • ${flags.join(' • ')}` : flags.join(' • ')
   }
 
-  if (details.notes) {
-    text = text ? `${text} • ${details.notes}` : details.notes
+  const cleanNotes = stripAdjustmentTokens(rawNotes)
+  if (cleanNotes) {
+    text = text ? `${text} • ${cleanNotes}` : cleanNotes
   }
 
   return text || 'Standard hole completed'

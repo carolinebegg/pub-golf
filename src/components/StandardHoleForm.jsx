@@ -2,7 +2,64 @@ import { useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { calculateStandardHoleScore, formatCurrency } from '../lib/helpers'
 
+const SCORE_ADJUSTMENT_TOKENS = {
+  teamKaraoke: '[adj:team-karaoke]',
+  fadoBestGSplit: '[adj:fado-best-g-split]',
+  fadoWorstGSplit: '[adj:fado-worst-g-split]',
+}
+
+function normalizeLabel(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+function isFergiesHole(hole) {
+  return Number(hole?.hole_number) === 8 || normalizeLabel(hole?.bar_name).includes('fergie')
+}
+
+function isFadoHole(hole) {
+  return normalizeLabel(hole?.bar_name).includes('fado')
+}
+
+function parseAdjustmentTokensFromNotes(notes) {
+  const raw = typeof notes === 'string' ? notes : ''
+
+  return {
+    teamKaraoke: raw.includes(SCORE_ADJUSTMENT_TOKENS.teamKaraoke),
+    fadoBestGSplit: raw.includes(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit),
+    fadoWorstGSplit: raw.includes(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit),
+    cleanNotes: stripAdjustmentTokens(raw),
+  }
+}
+
+function stripAdjustmentTokens(notes) {
+  const raw = typeof notes === 'string' ? notes : ''
+
+  return raw
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.teamKaraoke, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function composeNotesWithAdjustmentTokens(notes, form) {
+  const cleanNotes = stripAdjustmentTokens(notes)
+  const tokens = []
+
+  if (form.teamKaraoke) tokens.push(SCORE_ADJUSTMENT_TOKENS.teamKaraoke)
+  if (form.fadoBestGSplit) tokens.push(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit)
+  if (form.fadoWorstGSplit) tokens.push(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit)
+
+  if (!cleanNotes && !tokens.length) return ''
+  if (!cleanNotes) return tokens.join(' ')
+  if (!tokens.length) return cleanNotes
+
+  return `${cleanNotes}\n\n${tokens.join(' ')}`
+}
+
 function getInitialFormState(existingScore) {
+  const noteState = parseAdjustmentTokensFromNotes(existingScore?.notes)
+
   return {
     drinkName: existingScore?.drink_name ?? '',
     sips: existingScore?.sips ?? '',
@@ -22,7 +79,10 @@ function getInitialFormState(existingScore) {
       existingScore?.bonus_penalty === 0 || existingScore?.bonus_penalty
         ? String(existingScore.bonus_penalty)
         : '',
-    notes: existingScore?.notes ?? '',
+    teamKaraoke: noteState.teamKaraoke,
+    fadoBestGSplit: noteState.fadoBestGSplit,
+    fadoWorstGSplit: noteState.fadoWorstGSplit,
+    notes: noteState.cleanNotes,
   }
 }
 
@@ -41,6 +101,18 @@ export default function StandardHoleForm({
     Boolean(existingScore?.split_g_bonus || existingScore?.bonus_penalty)
   )
 
+  const fergiesHole = isFergiesHole(hole)
+  const fadoHole = isFadoHole(hole)
+
+  const effectiveSplitGBonus =
+    Number(form.splitGBonus || 0) +
+    (form.fadoBestGSplit ? 1 : 0)
+
+  const effectiveBonusPenalty =
+    Number(form.bonusPenalty || 0) +
+    (form.teamKaraoke ? -5 : 0) +
+    (form.fadoWorstGSplit ? 3 : 0)
+
   const computedPreviewScore = useMemo(() => {
     return calculateStandardHoleScore({
       sips: form.sips,
@@ -49,10 +121,10 @@ export default function StandardHoleForm({
       threw_up: form.threwUp,
       spilled_drink: form.spilledDrink,
       photobooth_missing: form.photoboothMissing,
-      bonus_penalty: form.bonusPenalty,
-      split_g_bonus: form.splitGBonus,
+      bonus_penalty: effectiveBonusPenalty,
+      split_g_bonus: effectiveSplitGBonus,
     })
-  }, [form])
+  }, [form, effectiveBonusPenalty, effectiveSplitGBonus])
 
   function updateField(key, value) {
     setForm((prev) => ({
@@ -79,6 +151,8 @@ export default function StandardHoleForm({
     setMessage('')
     setError('')
 
+    const notesWithAdjustmentTokens = composeNotesWithAdjustmentTokens(form.notes, form)
+
     const payload = {
       team_id: team.id,
       hole_id: hole.id,
@@ -92,9 +166,9 @@ export default function StandardHoleForm({
       spilled_drink: Boolean(form.spilledDrink),
       threw_up: Boolean(form.threwUp),
       photobooth_missing: Boolean(form.photoboothMissing),
-      split_g_bonus: Number(form.splitGBonus || 0),
-      bonus_penalty: Number(form.bonusPenalty || 0),
-      notes: form.notes.trim() || null,
+      split_g_bonus: effectiveSplitGBonus,
+      bonus_penalty: effectiveBonusPenalty,
+      notes: notesWithAdjustmentTokens || null,
     }
 
     const { error: upsertError } = await supabase
@@ -287,6 +361,39 @@ export default function StandardHoleForm({
               onChange={(e) => updateField('photoboothMissing', e.target.checked)}
             />
             No photobooth proof (+2)
+          </label>
+        ) : null}
+
+        {fergiesHole ? (
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.teamKaraoke}
+              onChange={(e) => updateField('teamKaraoke', e.target.checked)}
+            />
+            Team karaoke (-5)
+          </label>
+        ) : null}
+
+        {fadoHole ? (
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.fadoBestGSplit}
+              onChange={(e) => updateField('fadoBestGSplit', e.target.checked)}
+            />
+            Best G split (-1)
+          </label>
+        ) : null}
+
+        {fadoHole ? (
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.fadoWorstGSplit}
+              onChange={(e) => updateField('fadoWorstGSplit', e.target.checked)}
+            />
+            Worst G split (+3)
           </label>
         ) : null}
 
