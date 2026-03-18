@@ -148,7 +148,7 @@ function renderHoleDetails(hole, players = []) {
       if (cleanNotes) extras.push(cleanNotes)
     }
 
-    const base = `Bunker hazard: ${who} (${shot})`
+    const base = `Bunker hazard: ${who} — ${shot}`
     if (!extras.length) return base
 
     return `${base} • ${extras.join(' • ')}`
@@ -160,8 +160,10 @@ function renderHoleDetails(hole, players = []) {
   const hasFadoBestGSplit = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit)
   const hasFadoWorstGSplit = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit)
 
-  if (details.drink_name) bits.push(details.drink_name)
+  const drinkerName = details.player_id != null ? players.find((p) => p.id === details.player_id)?.name : null
+  if (drinkerName) bits.push(drinkerName)
   if (details.sips !== null && details.sips !== undefined) bits.push(`${details.sips} sips`)
+  if (details.drink_name) bits.push(details.drink_name)
   if (details.paid_by_player_id != null) {
     const paidByName = players.find((p) => p.id === details.paid_by_player_id)?.name
     if (paidByName) bits.push(`paid by ${paidByName}`)

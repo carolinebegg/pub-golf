@@ -343,25 +343,6 @@ export default function StandardHoleForm({
         <div style={styles.inlineGrid}>
           <label style={styles.field}>
             <span style={styles.label}>
-              Number of sips
-              {fieldErrors.sips ? (
-                <span style={styles.requiredError}> *</span>
-              ) : null}
-              <em style={styles.requiredTag}> (required)</em>
-            </span>
-            <input
-              ref={sipsInputRef}
-              type="number"
-              min="1"
-              value={form.sips}
-              onChange={(e) => updateField('sips', e.target.value)}
-              style={fieldErrors.sips ? { ...styles.input, ...styles.inputError } : styles.input}
-              placeholder="1"
-            />
-          </label>
-
-          <label style={styles.field}>
-            <span style={styles.label}>
               Drinker
               {fieldErrors.drinker ? (
                 <span style={styles.requiredError}> *</span>
@@ -381,6 +362,25 @@ export default function StandardHoleForm({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label style={styles.field}>
+            <span style={styles.label}>
+              Number of sips
+              {fieldErrors.sips ? (
+                <span style={styles.requiredError}> *</span>
+              ) : null}
+              <em style={styles.requiredTag}> (required)</em>
+            </span>
+            <input
+              ref={sipsInputRef}
+              type="number"
+              min="1"
+              value={form.sips}
+              onChange={(e) => updateField('sips', e.target.value)}
+              style={fieldErrors.sips ? { ...styles.input, ...styles.inputError } : styles.input}
+              placeholder="1"
+            />
           </label>
 
           <label style={styles.field}>

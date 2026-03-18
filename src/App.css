@@ -112,6 +112,7 @@ p {
 }
 
 .team-panel-card {
+  position: relative;
   width: 100%;
   max-width: 30rem;
   padding: 22px;
@@ -121,6 +122,15 @@ p {
   box-shadow: var(--shadow-soft);
   display: grid;
   gap: 14px;
+}
+
+.team-panel-emoji {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 1.75rem;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 .team-panel-eyebrow {
