@@ -9,6 +9,7 @@ export default function LeaderboardView({
   pitcherFinishes = [],
   leaderboardData = [],
   guinnessVotes = [],
+  players = [],
   onOpenBreakdown,
 }) {
   return (
@@ -23,7 +24,7 @@ export default function LeaderboardView({
         onOpenBreakdown={onOpenBreakdown}
       />
 
-      <GuinnessLeaderboards votes={guinnessVotes} teams={teams} />
+      <GuinnessLeaderboards votes={guinnessVotes} teams={teams} players={players} />
     </section>
   )
 }

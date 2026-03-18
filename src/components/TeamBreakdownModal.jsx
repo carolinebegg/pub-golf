@@ -18,7 +18,7 @@ function stripAdjustmentTokens(notes) {
     .trim()
 }
 
-export default function TeamBreakdownModal({ team = null, onClose }) {
+export default function TeamBreakdownModal({ team = null, players = [], onClose }) {
   useEffect(() => {
     if (!team) return
 
@@ -85,7 +85,7 @@ export default function TeamBreakdownModal({ team = null, onClose }) {
                 <h4 className="breakdown-row-title">Hole {hole.holeNumber} - {hole.holeName}</h4>
                 <p className="breakdown-row-type">{hole.displayTypeLabel || formatHoleType(hole.holeType)}</p>
                 <p className="breakdown-row-detail">
-                  {hole.score === null ? 'Not completed yet' : renderHoleDetails(hole)}
+                  {hole.score === null ? 'Not completed yet' : renderHoleDetails(hole, players)}
                 </p>
               </div>
               <div className="breakdown-row-score">{hole.score === null ? '-' : hole.score}</div>
@@ -114,7 +114,7 @@ function formatMembers(members) {
   return members.filter(Boolean).join(' • ')
 }
 
-function renderHoleDetails(hole) {
+function renderHoleDetails(hole, players = []) {
   if (hole.holeType === 'keg_stand') {
     const avg = hole.details?.average
     const count = hole.details?.count ?? 0
@@ -135,9 +135,12 @@ function renderHoleDetails(hole) {
 
   const details = hole.details || {}
 
-  if (hole.holeType === 'standard' && details.is_bunker_hazard) {
-    const who = details.drinker_name || 'Someone'
-    const shot = details.drink_name || 'bunker hazard shot'
+  if (hole.holeType === 'standard' && hole.bunkerEntry) {
+    const who =
+      hole.bunkerEntry.player_id != null
+        ? players.find((p) => p.id === hole.bunkerEntry.player_id)?.name ?? 'Someone'
+        : 'Someone'
+    const shot = hole.bunkerEntry.shot_name || 'bunker hazard shot'
     const extras = []
 
     if (details.notes) {
@@ -159,7 +162,10 @@ function renderHoleDetails(hole) {
 
   if (details.drink_name) bits.push(details.drink_name)
   if (details.sips !== null && details.sips !== undefined) bits.push(`${details.sips} sips`)
-  if (details.paid_by) bits.push(`paid by ${details.paid_by}`)
+  if (details.paid_by_player_id != null) {
+    const paidByName = players.find((p) => p.id === details.paid_by_player_id)?.name
+    if (paidByName) bits.push(`paid by ${paidByName}`)
+  }
   if (details.price !== null && details.price !== undefined) bits.push(formatCurrency(details.price))
 
   const flags = []

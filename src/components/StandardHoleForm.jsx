@@ -62,12 +62,11 @@ function getInitialFormState(existingScore) {
 
   return {
     drinkName: existingScore?.drink_name ?? '',
-    drinkerName: existingScore?.drinker_name ?? '',
     sips: existingScore?.sips ?? '',
     isGuinness: existingScore?.is_guinness ?? false,
-    paidBy: existingScore?.paid_by ?? '',
+    paidBy: existingScore?.paid_by_player_id != null ? String(existingScore.paid_by_player_id) : '',
     price: existingScore?.price ?? '',
-    bunkerCompleted: existingScore?.bunker_completed ?? false,
+    bunkerCompleted: false,
     waterViolated: existingScore?.water_violated ?? false,
     spilledDrink: existingScore?.spilled_drink ?? false,
     threwUp: existingScore?.threw_up ?? false,
@@ -90,10 +89,28 @@ function getInitialFormState(existingScore) {
 export default function StandardHoleForm({
   hole,
   team,
+  players = [],
   existingScore = null,
+  bunkerEntryForHole = null,
+  bunkerHazardEntries = [],
   onChanged,
 }) {
-  const [form, setForm] = useState(() => getInitialFormState(existingScore))
+  const playersForTeam = useMemo(
+    () =>
+      players
+        .filter((p) => p.team_id === team?.id)
+        .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0)),
+    [players, team?.id]
+  )
+  const [form, setForm] = useState(() => {
+    const base = getInitialFormState(existingScore)
+    return {
+      ...base,
+      bunkerCompleted: Boolean(bunkerEntryForHole),
+      bunkerPlayerId: bunkerEntryForHole?.player_id != null ? String(bunkerEntryForHole.player_id) : '',
+      bunkerShotName: bunkerEntryForHole?.shot_name ?? '',
+    }
+  })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [message, setMessage] = useState('')
@@ -115,7 +132,7 @@ export default function StandardHoleForm({
     (form.fadoWorstGSplit ? 3 : 0)
 
   const computedPreviewScore = useMemo(() => {
-    return calculateStandardHoleScore({
+    const base = calculateStandardHoleScore({
       sips: form.sips,
       is_guinness: form.isGuinness,
       water_violated: form.waterViolated,
@@ -125,7 +142,10 @@ export default function StandardHoleForm({
       bonus_penalty: effectiveBonusPenalty,
       split_g_bonus: effectiveSplitGBonus,
     })
-  }, [form, effectiveBonusPenalty, effectiveSplitGBonus])
+    if (base === null) return null
+    const bunkerPenalty = hole?.has_bunker && !form.bunkerCompleted ? 3 : 0
+    return base + bunkerPenalty
+  }, [form, effectiveBonusPenalty, effectiveSplitGBonus, hole?.has_bunker])
 
   function updateField(key, value) {
     setForm((prev) => ({
@@ -148,6 +168,13 @@ export default function StandardHoleForm({
       return
     }
 
+    if (hole.has_bunker && form.bunkerCompleted) {
+      if (!form.bunkerPlayerId || !form.bunkerShotName?.trim()) {
+        setError('Select who completed the bunker and enter the shot name.')
+        return
+      }
+    }
+
     setSaving(true)
     setMessage('')
     setError('')
@@ -160,9 +187,8 @@ export default function StandardHoleForm({
       drink_name: form.drinkName.trim() || null,
       sips: parsedSips,
       is_guinness: Boolean(form.isGuinness),
-      paid_by: form.paidBy || null,
+      paid_by_player_id: form.paidBy || null,
       price: form.price === '' ? null : Number(form.price),
-      bunker_completed: Boolean(form.bunkerCompleted),
       water_violated: Boolean(form.waterViolated),
       spilled_drink: Boolean(form.spilledDrink),
       threw_up: Boolean(form.threwUp),
@@ -182,6 +208,36 @@ export default function StandardHoleForm({
       setError(upsertError.message)
       setSaving(false)
       return
+    }
+
+    if (hole.has_bunker) {
+      if (form.bunkerCompleted) {
+        const { error: bunkerError } = await supabase.from('bunker_hazard_entries').upsert(
+          {
+            team_id: team.id,
+            hole_id: hole.id,
+            player_id: form.bunkerPlayerId,
+            shot_name: form.bunkerShotName.trim(),
+          },
+          { onConflict: 'hole_id,team_id' }
+        )
+        if (bunkerError) {
+          setError(bunkerError.message)
+          setSaving(false)
+          return
+        }
+      } else {
+        const { error: bunkerDeleteError } = await supabase
+          .from('bunker_hazard_entries')
+          .delete()
+          .eq('hole_id', hole.id)
+          .eq('team_id', team.id)
+        if (bunkerDeleteError) {
+          setError(bunkerDeleteError.message)
+          setSaving(false)
+          return
+        }
+      }
     }
 
     setMessage(existingScore ? 'Score updated.' : 'Score saved.')
@@ -288,9 +344,9 @@ export default function StandardHoleForm({
               style={styles.input}
             >
               <option value="">No payer selected</option>
-              {team.members?.map((member) => (
-                <option key={member} value={member}>
-                  {member}
+              {playersForTeam.map((player) => (
+                <option key={player.id} value={player.id}>
+                  {player.name}
                 </option>
               ))}
             </select>
@@ -319,14 +375,45 @@ export default function StandardHoleForm({
         <h5 style={styles.sectionTitle}>Adjustments</h5>
 
         {hole.has_bunker ? (
-          <label style={styles.checkboxRow}>
-            <input
-              type="checkbox"
-              checked={form.bunkerCompleted}
-              onChange={(e) => updateField('bunkerCompleted', e.target.checked)}
-            />
-            Bunker completed
-          </label>
+          <>
+            <label style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={form.bunkerCompleted}
+                onChange={(e) => updateField('bunkerCompleted', e.target.checked)}
+              />
+              Completed bunker
+            </label>
+            {form.bunkerCompleted ? (
+              <div style={styles.inlineGrid}>
+                <label style={styles.field}>
+                  <span style={styles.label}>Who completed bunker <em style={styles.requiredTag}>(required)</em></span>
+                  <select
+                    value={form.bunkerPlayerId}
+                    onChange={(e) => updateField('bunkerPlayerId', e.target.value)}
+                    style={styles.input}
+                  >
+                    <option value="">Select player</option>
+                    {playersForTeam.map((player) => (
+                      <option key={player.id} value={player.id}>
+                        {player.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={styles.field}>
+                  <span style={styles.label}>Shot name <em style={styles.requiredTag}>(required)</em></span>
+                  <input
+                    type="text"
+                    value={form.bunkerShotName}
+                    onChange={(e) => updateField('bunkerShotName', e.target.value)}
+                    style={styles.input}
+                    placeholder="e.g. House shot"
+                  />
+                </label>
+              </div>
+            ) : null}
+          </>
         ) : null}
 
         {hole.has_water ? (
@@ -455,7 +542,16 @@ export default function StandardHoleForm({
       </section>
 
       <div style={styles.buttonRow}>
-        <button type="submit" disabled={saving} style={styles.button}>
+        <button
+          type="submit"
+          disabled={
+            saving ||
+            (hole.has_bunker &&
+              form.bunkerCompleted &&
+              (!form.bunkerPlayerId || !form.bunkerShotName?.trim()))
+          }
+          style={styles.button}
+        >
           {saving ? 'Saving...' : existingScore ? 'Update score' : 'Save score'}
         </button>
 

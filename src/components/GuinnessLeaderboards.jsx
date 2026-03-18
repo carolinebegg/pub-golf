@@ -1,26 +1,26 @@
 import { useMemo } from 'react'
 import HoleLeaderboard from './HoleLeaderboard'
 
-function buildMemberLeaderboard(votes = [], teams = [], fieldPrefix) {
-  const nameField = `${fieldPrefix}_voted_member_name`
-  const teamField = `${fieldPrefix}_voted_team_id`
-
-  const teamById = new Map(teams.map((team) => [team.id, team]))
+function buildLeaderboardByPlayerId(votes = [], players = [], teams = [], fieldPrefix) {
+  const playerIdField = `${fieldPrefix}_voted_player_id`
+  const playerById = new Map(players.map((p) => [p.id, p]))
+  const teamById = new Map(teams.map((t) => [t.id, t]))
   const counts = new Map()
 
   for (const vote of votes) {
-    const memberName = vote?.[nameField]
-    const teamId = vote?.[teamField]
-    if (!memberName || !teamId) continue
+    const pid = vote?.[playerIdField]
+    if (!pid) continue
 
-    const key = `${teamId}::${memberName}`
+    const player = playerById.get(pid)
+    const teamId = player?.team_id
+    const key = pid
     const current = counts.get(key) || {
-      memberName,
-      teamId,
-      teamName: teamById.get(teamId)?.name || teamById.get(teamId)?.theme || null,
+      playerId: pid,
+      memberName: player?.name ?? '—',
+      teamId: teamId ?? null,
+      teamName: teamId ? (teamById.get(teamId)?.theme || teamById.get(teamId)?.name || null) : null,
       votes: 0,
     }
-
     current.votes += 1
     counts.set(key, current)
   }
@@ -32,28 +32,14 @@ function buildMemberLeaderboard(votes = [], teams = [], fieldPrefix) {
   })
 }
 
-function formatTeamLabel(team) {
-  if (!team) return 'Unknown team'
-  if (team.theme) return team.theme
-  if (team.name) return team.name
-  if (team.team_number !== null && team.team_number !== undefined) {
-    return `Team ${team.team_number}`
-  }
-  return 'Team'
-}
-
-export default function GuinnessLeaderboards({ votes = [], teams = [] }) {
-  const { best, worst } = useMemo(() => {
-    const withLabels = teams.map((team) => ({
-      ...team,
-      _displayLabel: formatTeamLabel(team),
-    }))
-
-    return {
-      best: buildMemberLeaderboard(votes, withLabels, 'best'),
-      worst: buildMemberLeaderboard(votes, withLabels, 'worst'),
-    }
-  }, [votes, teams])
+export default function GuinnessLeaderboards({ votes = [], teams = [], players = [] }) {
+  const { best, worst } = useMemo(
+    () => ({
+      best: buildLeaderboardByPlayerId(votes, players, teams, 'best'),
+      worst: buildLeaderboardByPlayerId(votes, players, teams, 'worst'),
+    }),
+    [votes, players, teams]
+  )
 
   if (!best.length && !worst.length) {
     return null
@@ -75,7 +61,7 @@ export default function GuinnessLeaderboards({ votes = [], teams = [] }) {
             title: 'Best Split G',
             rows: best,
             emptyText: 'No votes yet.',
-            getKey: (row) => `${row.teamId}::${row.memberName}`,
+            getKey: (row) => row.playerId,
             columns: (row) => ({
               primary: row.memberName,
               secondary: row.teamName || 'Team',
@@ -87,7 +73,7 @@ export default function GuinnessLeaderboards({ votes = [], teams = [] }) {
             title: 'Worst Split G',
             rows: worst,
             emptyText: 'No votes yet.',
-            getKey: (row) => `${row.teamId}::${row.memberName}`,
+            getKey: (row) => row.playerId,
             columns: (row) => ({
               primary: row.memberName,
               secondary: row.teamName || 'Team',

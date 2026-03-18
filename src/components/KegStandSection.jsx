@@ -11,12 +11,25 @@ export default function KegStandSection({
   hole,
   team,
   allTeams = [],
+  players = [],
   entriesForHole = [],
   onChanged,
 }) {
-  const [memberName, setMemberName] = useState('')
+  const [playerId, setPlayerId] = useState('')
   const [seconds, setSeconds] = useState('')
   const [editingEntryId, setEditingEntryId] = useState(null)
+
+  const playersForTeam = useMemo(
+    () =>
+      players
+        .filter((p) => p.team_id === team?.id)
+        .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0)),
+    [players, team?.id]
+  )
+  const playerById = useMemo(
+    () => new Map(players.map((p) => [p.id, p])),
+    [players]
+  )
 
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
@@ -31,7 +44,7 @@ export default function KegStandSection({
       return
     }
 
-    if (!memberName || seconds === '') {
+    if (!playerId || seconds === '') {
       setError('Select a member and enter seconds.')
       return
     }
@@ -42,7 +55,7 @@ export default function KegStandSection({
     const payload = {
       hole_id: hole.id,
       team_id: team.id,
-      member_name: memberName,
+      player_id: playerId,
       seconds: Number(seconds),
     }
 
@@ -63,28 +76,28 @@ export default function KegStandSection({
       return
     }
 
-    setMemberName('')
+    setPlayerId('')
     setSeconds('')
     setEditingEntryId(null)
-    setShowLeaderboard(true)
-
-    setSaving(false)
 
     if (onChanged) {
       await onChanged()
     }
+
+    setShowLeaderboard(true)
+    setSaving(false)
   }
 
   function startEdit(entry) {
     setEditingEntryId(entry.id)
-    setMemberName(entry.member_name)
+    setPlayerId(entry.player_id ? String(entry.player_id) : '')
     setSeconds(String(entry.seconds))
     setError('')
   }
 
   function cancelEdit() {
     setEditingEntryId(null)
-    setMemberName('')
+    setPlayerId('')
     setSeconds('')
     setError('')
   }
@@ -108,25 +121,27 @@ export default function KegStandSection({
       cancelEdit()
     }
 
-    setShowLeaderboard(true)
-    setDeletingId(null)
-
     if (onChanged) {
       await onChanged()
     }
+
+    setShowLeaderboard(true)
+    setDeletingId(null)
   }
 
   const enrichedEntries = useMemo(() => {
     return entriesForHole.map((entry) => {
       const entryTeam = allTeams.find((t) => t.id === entry.team_id)
+      const player = entry.player_id ? playerById.get(entry.player_id) : null
       return {
         ...entry,
         teamLabel: entryTeam
           ? `Team ${entryTeam.team_number}: ${entryTeam.theme || entryTeam.name}`
           : 'Unknown team',
+        playerName: player?.name ?? '—',
       }
     })
-  }, [entriesForHole, allTeams])
+  }, [entriesForHole, allTeams, playerById])
 
   const individualTimesLeaderboard = useMemo(
     () => rankKegStandIndividualEntries(enrichedEntries),
@@ -156,14 +171,14 @@ export default function KegStandSection({
           <div style={styles.controlsRow}>
             <select
               aria-label="Team member"
-              value={memberName}
-              onChange={(e) => setMemberName(e.target.value)}
+              value={playerId}
+              onChange={(e) => setPlayerId(e.target.value)}
               style={{ ...styles.input, ...styles.memberInput }}
             >
               <option value="">Select team member</option>
-              {team.members?.map((member) => (
-                <option key={member} value={member}>
-                  {member}
+              {playersForTeam.map((player) => (
+                <option key={player.id} value={player.id}>
+                  {player.name}
                 </option>
               ))}
             </select>
@@ -181,7 +196,7 @@ export default function KegStandSection({
 
             <button
               type="submit"
-              disabled={saving || !memberName || seconds === ''}
+              disabled={saving || !playerId || seconds === ''}
               style={styles.primaryButton}
             >
               {saving
@@ -207,7 +222,7 @@ export default function KegStandSection({
             {teamEntries.map((entry) => (
               <div key={entry.id} style={styles.row}>
                 <div style={styles.rowText}>
-                  <strong>{entry.member_name}</strong> — {formatSeconds(entry.seconds)}
+                  <strong>{entry.playerName}</strong> — {formatSeconds(entry.seconds)}
                 </div>
                 <div style={styles.rowActions}>
                   <button
@@ -254,7 +269,7 @@ export default function KegStandSection({
               getKey: (entry) => entry.id,
               rankPlace: (row) => row.rankScore + 1,
               columns: (entry) => ({
-                primary: entry.member_name,
+                primary: entry.playerName,
                 secondary: entry.teamLabel,
                 stat: formatSeconds(entry.seconds),
               }),

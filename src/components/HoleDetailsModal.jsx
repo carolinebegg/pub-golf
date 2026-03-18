@@ -16,12 +16,15 @@ export default function HoleDetailsModal({
   hole = null,
   selectedTeam = null,
   allTeams = [],
+  players = [],
   existingScore = null,
   pitcherFinish = null,
+  bunkerEntryForHole = null,
   holeStatus = 'not-started',
   guinnessVotes = [],
   kegEntriesForHole = [],
   pitcherFinishesForHole = [],
+  bunkerHazardEntries = [],
   onChanged,
   onClose,
 }) {
@@ -127,7 +130,10 @@ export default function HoleDetailsModal({
                 key={`standard-${hole.id}-${selectedTeam.id}-${existingScore?.id ?? 'new'}`}
                 hole={hole}
                 team={selectedTeam}
+                players={players}
                 existingScore={existingScore}
+                bunkerEntryForHole={bunkerEntryForHole}
+                bunkerHazardEntries={bunkerHazardEntries}
                 onChanged={onChanged}
               />
             </section>
@@ -139,6 +145,7 @@ export default function HoleDetailsModal({
                 hole={hole}
                 votingTeam={selectedTeam}
                 allTeams={allTeams}
+                players={players}
                 votes={guinnessVotes}
                 onChanged={onChanged}
               />
@@ -152,6 +159,7 @@ export default function HoleDetailsModal({
                 hole={hole}
                 team={selectedTeam}
                 allTeams={allTeams}
+                players={players}
                 entriesForHole={kegEntriesForHole}
                 onChanged={onChanged}
               />
@@ -176,7 +184,7 @@ export default function HoleDetailsModal({
   )
 }
 
-function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged }) {
+function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = [], onChanged }) {
   const existingVote =
     votes.find(
       (vote) =>
@@ -188,59 +196,51 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
   const [error, setError] = useState('')
   const [showLeaderboards, setShowLeaderboards] = useState(false)
   const [bestSelection, setBestSelection] = useState(() => {
-    if (!existingVote) return ''
-    if (!existingVote.best_voted_member_name || !existingVote.best_voted_team_id) return ''
-    return `${existingVote.best_voted_team_id}::${existingVote.best_voted_member_name}`
+    if (!existingVote?.best_voted_player_id) return ''
+    return String(existingVote.best_voted_player_id)
   })
   const [worstSelection, setWorstSelection] = useState(() => {
-    if (!existingVote) return ''
-    if (!existingVote.worst_voted_member_name || !existingVote.worst_voted_team_id) return ''
-    return `${existingVote.worst_voted_team_id}::${existingVote.worst_voted_member_name}`
+    if (!existingVote?.worst_voted_player_id) return ''
+    return String(existingVote.worst_voted_player_id)
   })
 
-  // Keep local selections in sync if votes for this team+hole change after a refresh
   useEffect(() => {
     if (!existingVote) {
       setBestSelection('')
       setWorstSelection('')
       return
     }
-
-    const nextBest =
-      existingVote.best_voted_member_name && existingVote.best_voted_team_id
-        ? `${existingVote.best_voted_team_id}::${existingVote.best_voted_member_name}`
-        : ''
-
-    const nextWorst =
-      existingVote.worst_voted_member_name && existingVote.worst_voted_team_id
-        ? `${existingVote.worst_voted_team_id}::${existingVote.worst_voted_member_name}`
-        : ''
-
-    setBestSelection(nextBest)
-    setWorstSelection(nextWorst)
+    setBestSelection(existingVote.best_voted_player_id ? String(existingVote.best_voted_player_id) : '')
+    setWorstSelection(existingVote.worst_voted_player_id ? String(existingVote.worst_voted_player_id) : '')
   }, [existingVote])
 
-  // Utility shared with overall Guinness leaderboards to aggregate counts by member + team
-  function buildGuinnessMemberLeaderboard(voteRows, teamRows, prefix) {
-    const nameField = `${prefix}_voted_member_name`
-    const teamField = `${prefix}_voted_team_id`
+  const playerById = useMemo(
+    () => new Map(players.map((p) => [p.id, p])),
+    [players]
+  )
+  const teamById = useMemo(
+    () => new Map(allTeams.map((t) => [t.id, t])),
+    [allTeams]
+  )
 
-    const teamById = new Map(teamRows.map((team) => [team.id, team]))
+  function buildGuinnessLeaderboardByPlayerId(voteRows, prefix) {
+    const playerIdField = `${prefix}_voted_player_id`
     const counts = new Map()
 
     for (const vote of voteRows) {
-      const memberName = vote?.[nameField]
-      const teamId = vote?.[teamField]
-      if (!memberName || !teamId) continue
+      const pid = vote?.[playerIdField]
+      if (!pid) continue
 
-      const key = `${teamId}::${memberName}`
+      const player = playerById.get(pid)
+      const teamId = player?.team_id
+      const key = pid
       const current = counts.get(key) || {
-        memberName,
-        teamId,
-        teamName: teamById.get(teamId)?.name || teamById.get(teamId)?.theme || null,
+        playerId: pid,
+        memberName: player?.name ?? '—',
+        teamId: teamId ?? null,
+        teamName: teamId ? (teamById.get(teamId)?.theme || teamById.get(teamId)?.name || null) : null,
         votes: 0,
       }
-
       current.votes += 1
       counts.set(key, current)
     }
@@ -253,22 +253,16 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
   }
 
   const options = useMemo(() => {
-    const rows = []
-    for (const team of allTeams) {
-      if (!Array.isArray(team.members)) continue
-      if (team.id === votingTeam.id) continue
-      for (const member of team.members) {
-        if (!member) continue
-        rows.push({
-          key: `${team.id}::${member}`,
-          memberName: member,
-          teamId: team.id,
-          teamLabel: team.theme,
-        })
-      }
-    }
-    return rows
-  }, [allTeams, votingTeam.id])
+    return players
+      .filter((p) => p.team_id !== votingTeam.id)
+      .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
+      .map((p) => ({
+        playerId: p.id,
+        playerName: p.name,
+        teamId: p.team_id,
+        teamLabel: teamById.get(p.team_id)?.theme || teamById.get(p.team_id)?.name || 'Team',
+      }))
+  }, [players, votingTeam.id, teamById])
 
   const holeVotes = useMemo(
     () => votes.filter((vote) => vote.hole_id === hole.id),
@@ -276,21 +270,19 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
   )
 
   const bestLeaderboard = useMemo(
-    () => buildGuinnessMemberLeaderboard(holeVotes, allTeams, 'best').slice(0, 5),
-    [holeVotes, allTeams],
+    () => buildGuinnessLeaderboardByPlayerId(holeVotes, 'best').slice(0, 5),
+    [holeVotes, playerById, teamById],
   )
 
   const worstLeaderboard = useMemo(
-    () => buildGuinnessMemberLeaderboard(holeVotes, allTeams, 'worst').slice(0, 5),
-    [holeVotes, allTeams],
+    () => buildGuinnessLeaderboardByPlayerId(holeVotes, 'worst').slice(0, 5),
+    [holeVotes, playerById, teamById],
   )
 
-  const hasVote =
-    Boolean(
-      existingVote &&
-        ((existingVote.best_voted_member_name && existingVote.best_voted_team_id) ||
-          (existingVote.worst_voted_member_name && existingVote.worst_voted_team_id)),
-    )
+  const hasVote = Boolean(
+    existingVote &&
+      (existingVote.best_voted_player_id || existingVote.worst_voted_player_id),
+  )
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -306,10 +298,8 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
       return
     }
 
-    const [bestTeamId, bestMemberName] = bestSelection ? bestSelection.split('::') : [null, null]
-    const [worstTeamId, worstMemberName] = worstSelection
-      ? worstSelection.split('::')
-      : [null, null]
+    const bestPlayer = bestSelection ? playerById.get(bestSelection) : null
+    const worstPlayer = worstSelection ? playerById.get(worstSelection) : null
 
     setSaving(true)
 
@@ -317,10 +307,10 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
       {
         hole_id: hole.id,
         voting_team_id: votingTeam.id,
-        best_voted_member_name: bestMemberName || null,
-        best_voted_team_id: bestTeamId || null,
-        worst_voted_member_name: worstMemberName || null,
-        worst_voted_team_id: worstTeamId || null,
+        best_voted_player_id: bestSelection || null,
+        best_voted_team_id: bestPlayer?.team_id ?? null,
+        worst_voted_player_id: worstSelection || null,
+        worst_voted_team_id: worstPlayer?.team_id ?? null,
       },
       {
         onConflict: 'hole_id,voting_team_id',
@@ -333,12 +323,12 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
       return
     }
 
-    setSaving(false)
-    setShowLeaderboards(true)
-
     if (onChanged) {
       await onChanged()
     }
+
+    setShowLeaderboards(true)
+    setSaving(false)
   }
 
   async function handleReset() {
@@ -361,12 +351,13 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
 
     setBestSelection('')
     setWorstSelection('')
-    setSaving(false)
-    setShowLeaderboards(true)
 
     if (onChanged) {
       await onChanged()
     }
+
+    setShowLeaderboards(true)
+    setSaving(false)
   }
 
   return (
@@ -384,8 +375,8 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
           >
             <option value="">No vote</option>
             {options.map((option) => (
-              <option key={option.key} value={option.key}>
-                {option.memberName} ({option.teamLabel})
+              <option key={option.playerId} value={option.playerId}>
+                {option.playerName} ({option.teamLabel})
               </option>
             ))}
           </select>
@@ -400,8 +391,8 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
           >
             <option value="">No vote</option>
             {options.map((option) => (
-              <option key={option.key} value={option.key}>
-                {option.memberName} ({option.teamLabel})
+              <option key={option.playerId} value={option.playerId}>
+                {option.playerName} ({option.teamLabel})
               </option>
             ))}
           </select>
@@ -485,7 +476,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
                 title: 'Best Split G',
                 rows: bestLeaderboard,
                 emptyText: 'No votes yet.',
-                getKey: (row) => `${row.teamId}::${row.memberName}`,
+                getKey: (row) => row.playerId,
                 columns: (row) => ({
                   primary: row.memberName,
                   secondary: row.teamName || 'Team',
@@ -497,7 +488,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
                 title: 'Worst Split G',
                 rows: worstLeaderboard,
                 emptyText: 'No votes yet.',
-                getKey: (row) => `${row.teamId}::${row.memberName}`,
+                getKey: (row) => row.playerId,
                 columns: (row) => ({
                   primary: row.memberName,
                   secondary: row.teamName || 'Team',

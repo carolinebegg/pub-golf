@@ -31,10 +31,12 @@ function isHoleComplete(hole, holeState) {
 export default function App() {
   const [holes, setHoles] = useState([])
   const [teams, setTeams] = useState([])
+  const [players, setPlayers] = useState([])
   const [scores, setScores] = useState([])
   const [kegStandEntries, setKegStandEntries] = useState([])
   const [pitcherFinishes, setPitcherFinishes] = useState([])
   const [guinnessVotes, setGuinnessVotes] = useState([])
+  const [bunkerHazardEntries, setBunkerHazardEntries] = useState([])
 
   const [loggedInTeam, setLoggedInTeam] = useState(() => {
     try {
@@ -74,21 +76,32 @@ export default function App() {
     const [
       { data: holesData, error: holesError },
       { data: teamsData, error: teamsError },
+      { data: playersData, error: playersError },
       { data: scoresData, error: scoresError },
       { data: kegData, error: kegError },
       { data: pitcherData, error: pitcherError },
       { data: guinnessData, error: guinnessError },
+      { data: bunkerData, error: bunkerError },
     ] = await Promise.all([
       supabase.from('holes').select('*').order('hole_number', { ascending: true }),
       supabase.from('teams').select('*').order('team_number', { ascending: true }),
+      supabase.from('players').select('*').order('rank', { ascending: true }),
       supabase.from('scores').select('*'),
       supabase.from('keg_stand_entries').select('*'),
       supabase.from('pitcher_finishes').select('*'),
       supabase.from('guinness_split_votes').select('*'),
+      supabase.from('bunker_hazard_entries').select('*'),
     ])
 
     const firstError =
-      holesError || teamsError || scoresError || kegError || pitcherError || guinnessError
+      holesError ||
+      teamsError ||
+      playersError ||
+      scoresError ||
+      kegError ||
+      pitcherError ||
+      guinnessError ||
+      bunkerError
 
     if (firstError) {
       setError(firstError.message || 'Failed to load data')
@@ -99,17 +112,21 @@ export default function App() {
 
     const nextHoles = holesData || []
     const nextTeams = teamsData || []
+    const nextPlayers = playersData || []
     const nextScores = scoresData || []
     const nextKeg = kegData || []
     const nextPitcher = pitcherData || []
     const nextGuinness = guinnessData || []
+    const nextBunker = bunkerData || []
 
     setHoles(nextHoles)
     setTeams(nextTeams)
+    setPlayers(nextPlayers)
     setScores(nextScores)
     setKegStandEntries(nextKeg)
     setPitcherFinishes(nextPitcher)
     setGuinnessVotes(nextGuinness)
+    setBunkerHazardEntries(nextBunker)
 
     setLoggedInTeam((current) => {
       if (!current?.id) return null
@@ -124,13 +141,19 @@ export default function App() {
         return null
       }
 
+      const memberNames = nextPlayers
+        .filter((p) => p.team_id === freshTeam.id)
+        .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
+        .map((p) => p.name)
+      const enrichedTeam = { ...freshTeam, members: memberNames }
+
       try {
-        localStorage.setItem(TEAM_LOGIN_STORAGE_KEY, JSON.stringify(freshTeam))
+        localStorage.setItem(TEAM_LOGIN_STORAGE_KEY, JSON.stringify(enrichedTeam))
       } catch {
         // ignore
       }
 
-      return freshTeam
+      return enrichedTeam
     })
 
     setLoading(false)
@@ -159,6 +182,18 @@ export default function App() {
     setLoggedInTeam(null)
   }
 
+  const teamsWithMembers = useMemo(
+    () =>
+      teams.map((team) => ({
+        ...team,
+        members: players
+          .filter((p) => p.team_id === team.id)
+          .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
+          .map((p) => p.name),
+      })),
+    [teams, players]
+  )
+
   const holeDataById = useMemo(() => {
     const byId = {}
 
@@ -167,6 +202,12 @@ export default function App() {
         existingScore: null,
         kegEntries: [],
         pitcherFinish: null,
+        bunkerEntry:
+          loggedInTeam?.id
+            ? bunkerHazardEntries.find(
+                (b) => b.hole_id === hole.id && b.team_id === loggedInTeam.id
+              ) || null
+            : null,
       }
     }
 
@@ -191,7 +232,7 @@ export default function App() {
     }
 
     return byId
-  }, [holes, scores, kegStandEntries, pitcherFinishes, loggedInTeam])
+  }, [holes, scores, kegStandEntries, pitcherFinishes, bunkerHazardEntries, loggedInTeam])
 
   const orderedHoles = useMemo(() => sortHolesByNumber(holes), [holes])
 
@@ -231,13 +272,14 @@ export default function App() {
   const overallLeaderboard = useMemo(
     () =>
       buildOverallLeaderboardData({
-        teams,
+        teams: teamsWithMembers,
         holes,
         scores,
         kegStandEntries,
         pitcherFinishes,
+        bunkerHazardEntries,
       }),
-    [teams, holes, scores, kegStandEntries, pitcherFinishes]
+    [teamsWithMembers, holes, scores, kegStandEntries, pitcherFinishes, bunkerHazardEntries]
   )
 
   const loggedInTeamStanding =
@@ -365,7 +407,7 @@ export default function App() {
           </header>
 
           <TeamLogin
-            teams={teams}
+            teams={teamsWithMembers}
             loggedInTeam={loggedInTeam}
             onLogin={handleLogin}
             onLogout={handleLogout}
@@ -402,13 +444,14 @@ export default function App() {
             <>
               {activeView === 'leaderboard' ? (
                 <LeaderboardView
-                  teams={teams}
+                  teams={teamsWithMembers}
                   holes={holes}
                   scores={scores}
                   kegStandEntries={kegStandEntries}
                   pitcherFinishes={pitcherFinishes}
                   leaderboardData={overallLeaderboard}
                   guinnessVotes={guinnessVotes}
+                  players={players}
                   onOpenBreakdown={handleOpenBreakdown}
                 />
               ) : (
@@ -418,22 +461,26 @@ export default function App() {
                   holeStatusById={holeStatusById}
                   onOpenHoleDetails={handleOpenHoleDetails}
                   selectedTeam={loggedInTeam}
+                  players={players}
                 />
               )}
             </>
           )}
 
-          <TeamBreakdownModal team={selectedBreakdownTeam} onClose={handleCloseBreakdown} />
+          <TeamBreakdownModal team={selectedBreakdownTeam} players={players} onClose={handleCloseBreakdown} />
           <HoleDetailsModal
             hole={selectedHole}
             selectedTeam={loggedInTeam}
-            allTeams={teams}
+            allTeams={teamsWithMembers}
+            players={players}
             existingScore={selectedHoleState?.existingScore || null}
             pitcherFinish={selectedHoleState?.pitcherFinish || null}
+            bunkerEntryForHole={selectedHoleState?.bunkerEntry ?? null}
             holeStatus={selectedHole ? holeStatusById[selectedHole.id] || 'not-started' : 'not-started'}
             kegEntriesForHole={selectedHoleKegEntries}
             pitcherFinishesForHole={selectedHolePitcherFinishes}
             guinnessVotes={guinnessVotes}
+            bunkerHazardEntries={bunkerHazardEntries}
             onChanged={refreshData}
             onClose={handleCloseHoleDetails}
           />
