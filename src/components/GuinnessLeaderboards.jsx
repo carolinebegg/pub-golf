@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import LeaderboardCard from './LeaderboardCard'
+import HoleLeaderboard from './HoleLeaderboard'
 
 function buildMemberLeaderboard(votes = [], teams = [], fieldPrefix) {
   const nameField = `${fieldPrefix}_voted_member_name`
@@ -66,61 +66,36 @@ export default function GuinnessLeaderboards({ votes = [], teams = [] }) {
         <div style={styles.subtitle}>Votes from Guinness holes</div>
       </div>
 
-      <div style={styles.grid}>
-        <LeaderboardCard
-          sections={[
-            {
-              id: 'best-split-g',
-              title: 'Best Split G',
-              loading: false,
-              rows: best,
-              emptyText: 'No votes yet.',
-              getKey: (row) => `${row.teamId}::${row.memberName}`,
-              renderRow: (row, index) => (
-                <>
-                  <span style={styles.rank}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                  </span>
-                  <div style={styles.info}>
-                    <span style={styles.name}>{row.memberName}</span>
-                    <span style={styles.meta}>{row.teamName || 'Team'}</span>
-                  </div>
-                  <span style={styles.stat}>
-                    {row.votes} vote{row.votes === 1 ? '' : 's'}
-                  </span>
-                </>
-              ),
-            },
-          ]}
-        />
-
-        <LeaderboardCard
-          sections={[
-            {
-              id: 'worst-split-g',
-              title: 'Worst Split G',
-              loading: false,
-              rows: worst,
-              emptyText: 'No votes yet.',
-              getKey: (row) => `${row.teamId}::${row.memberName}`,
-              renderRow: (row, index) => (
-                <>
-                  <span style={styles.rank}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                  </span>
-                  <div style={styles.info}>
-                    <span style={styles.name}>{row.memberName}</span>
-                    <span style={styles.meta}>{row.teamName || 'Team'}</span>
-                  </div>
-                  <span style={styles.stat}>
-                    {row.votes} vote{row.votes === 1 ? '' : 's'}
-                  </span>
-                </>
-              ),
-            },
-          ]}
-        />
-      </div>
+      <HoleLeaderboard
+        layout="split"
+        gridMinWidth={260}
+        sections={[
+          {
+            id: 'best-split-g',
+            title: 'Best Split G',
+            rows: best,
+            emptyText: 'No votes yet.',
+            getKey: (row) => `${row.teamId}::${row.memberName}`,
+            columns: (row) => ({
+              primary: row.memberName,
+              secondary: row.teamName || 'Team',
+              stat: `${row.votes} vote${row.votes === 1 ? '' : 's'}`,
+            }),
+          },
+          {
+            id: 'worst-split-g',
+            title: 'Worst Split G',
+            rows: worst,
+            emptyText: 'No votes yet.',
+            getKey: (row) => `${row.teamId}::${row.memberName}`,
+            columns: (row) => ({
+              primary: row.memberName,
+              secondary: row.teamName || 'Team',
+              stat: `${row.votes} vote${row.votes === 1 ? '' : 's'}`,
+            }),
+          },
+        ]}
+      />
     </section>
   )
 }
@@ -146,73 +121,6 @@ const styles = {
   subtitle: {
     color: 'var(--text-secondary)',
     fontSize: '0.9rem',
-  },
-  grid: {
-    display: 'grid',
-    gap: 10,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-  },
-  card: {
-    border: '1.5px solid #b8d9c4',
-    borderRadius: 12,
-    overflow: 'hidden',
-    background: '#f6fbf7',
-  },
-  leaderboardSectionHeader: {
-    background: '#2d6a4a',
-    color: '#fff',
-    padding: '6px 14px',
-    fontSize: '0.74rem',
-    fontWeight: 800,
-    textTransform: 'uppercase',
-    letterSpacing: '0.07em',
-  },
-  list: {
-    listStyle: 'none',
-    padding: 0,
-    margin: 0,
-    display: 'grid',
-    gap: 0,
-  },
-  row: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '9px 12px',
-    borderTop: '1px solid #e3ede6',
-  },
-  rank: {
-    fontSize: '1.1rem',
-    minWidth: 28,
-    textAlign: 'center',
-  },
-  info: {
-    flex: 1,
-    display: 'grid',
-    gap: 1,
-    minWidth: 0,
-  },
-  name: {
-    fontWeight: 700,
-    color: '#1f3027',
-    fontSize: '0.9rem',
-  },
-  meta: {
-    color: '#6a7d72',
-    fontSize: '0.8rem',
-  },
-  stat: {
-    fontWeight: 700,
-    color: '#1f5a3a',
-    fontSize: '0.88rem',
-    fontVariantNumeric: 'tabular-nums',
-    whiteSpace: 'nowrap',
-  },
-  empty: {
-    margin: 0,
-    fontSize: '0.9rem',
-    color: 'var(--text-secondary)',
-    padding: '9px 12px',
   },
 }
 

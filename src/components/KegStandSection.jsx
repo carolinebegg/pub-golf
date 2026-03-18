@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { buildKegStandTeamLeaderboard, formatSeconds } from '../lib/helpers'
-import LeaderboardCard from './LeaderboardCard'
+import {
+  buildKegStandTeamLeaderboard,
+  formatSeconds,
+  rankKegStandIndividualEntries,
+} from '../lib/helpers'
+import HoleLeaderboard from './HoleLeaderboard'
 
 export default function KegStandSection({
   hole,
@@ -132,6 +136,11 @@ export default function KegStandSection({
     })
   }, [entriesForHole, allTeams])
 
+  const individualTimesLeaderboard = useMemo(
+    () => rankKegStandIndividualEntries(enrichedEntries),
+    [enrichedEntries]
+  )
+
   const teamEntries = useMemo(() => {
     return enrichedEntries.filter((entry) => entry.team_id === team.id)
   }, [enrichedEntries, team.id])
@@ -242,47 +251,34 @@ export default function KegStandSection({
       </div>
 
       {showLeaderboard && (
-        <LeaderboardCard
+        <HoleLeaderboard
+          layout="stacked"
           sections={[
             {
               id: 'individual',
               title: 'Individual times',
-              loading: false,
-              rows: enrichedEntries,
+              rows: individualTimesLeaderboard,
               emptyText: 'No entries yet.',
               getKey: (entry) => entry.id,
-              renderRow: (entry, index) => (
-                <>
-                  <span style={styles.leaderboardRank}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                  </span>
-                  <div style={styles.leaderboardInfo}>
-                    <span style={styles.leaderboardName}>{entry.member_name}</span>
-                    <span style={styles.leaderboardMeta}>{entry.teamLabel}</span>
-                  </div>
-                  <span style={styles.leaderboardStat}>{formatSeconds(entry.seconds)}</span>
-                </>
-              ),
+              rankPlace: (row) => row.rankScore + 1,
+              columns: (entry) => ({
+                primary: entry.member_name,
+                secondary: entry.teamLabel,
+                stat: formatSeconds(entry.seconds),
+              }),
             },
             {
               id: 'teams',
               title: 'Team scores',
-              loading: false,
               rows: teamLeaderboard,
               emptyText: 'No team results yet.',
               getKey: (row) => row.team_id,
-              renderRow: (row, index) => (
-                <>
-                  <span style={styles.leaderboardRank}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                  </span>
-                  <div style={styles.leaderboardInfo}>
-                    <span style={styles.leaderboardName}>{row.teamLabel}</span>
-                    <span style={styles.leaderboardMeta}>{formatSeconds(row.average)}</span>
-                  </div>
-                  <span style={styles.leaderboardStat}>+{row.rankScore}</span>
-                </>
-              ),
+              rankPlace: (row) => row.rankScore + 1,
+              columns: (row) => ({
+                primary: row.teamLabel,
+                secondary: formatSeconds(row.average),
+                stat: `+${row.rankScore}`,
+              }),
             },
           ]}
         />
@@ -403,37 +399,6 @@ const styles = {
     fontWeight: 800,
     fontSize: '0.95rem',
     cursor: 'pointer',
-  },
-  leaderboardRank: {
-    fontSize: '1.1rem',
-    minWidth: 28,
-    textAlign: 'center',
-  },
-  leaderboardInfo: {
-    flex: 1,
-    display: 'grid',
-    gap: 1,
-    minWidth: 0,
-  },
-  leaderboardName: {
-    fontWeight: 700,
-    color: '#1f3027',
-    fontSize: '0.9rem',
-  },
-  leaderboardMeta: {
-    color: '#6a7d72',
-    fontSize: '0.8rem',
-  },
-  leaderboardStat: {
-    fontWeight: 700,
-    color: '#1f5a3a',
-    fontSize: '0.88rem',
-    whiteSpace: 'nowrap',
-  },
-  leaderboardEmpty: {
-    padding: '8px 14px',
-    color: '#6a7d72',
-    fontSize: '0.88rem',
   },
   success: {
     color: '#17663a',

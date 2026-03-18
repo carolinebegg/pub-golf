@@ -104,7 +104,6 @@ export default function StandardHoleForm({
 
   const fergiesHole = isFergiesHole(hole)
   const fadoHole = isFadoHole(hole)
-  const isBunkerHazardHole = Boolean(hole?.has_bunker)
 
   const effectiveSplitGBonus =
     Number(form.splitGBonus || 0) +
@@ -116,10 +115,6 @@ export default function StandardHoleForm({
     (form.fadoWorstGSplit ? 3 : 0)
 
   const computedPreviewScore = useMemo(() => {
-    if (isBunkerHazardHole) {
-      return 0
-    }
-
     return calculateStandardHoleScore({
       sips: form.sips,
       is_guinness: form.isGuinness,
@@ -130,7 +125,7 @@ export default function StandardHoleForm({
       bonus_penalty: effectiveBonusPenalty,
       split_g_bonus: effectiveSplitGBonus,
     })
-  }, [form, effectiveBonusPenalty, effectiveSplitGBonus, isBunkerHazardHole])
+  }, [form, effectiveBonusPenalty, effectiveSplitGBonus])
 
   function updateField(key, value) {
     setForm((prev) => ({
@@ -147,24 +142,10 @@ export default function StandardHoleForm({
       return
     }
 
-    let parsedSips = 0
-
-    if (!isBunkerHazardHole) {
-      parsedSips = Number(form.sips)
-      if (!Number.isFinite(parsedSips) || parsedSips <= 0) {
-        setError('Enter a valid sip count (1 or more).')
-        return
-      }
-    } else {
-      if (!form.drinkerName.trim()) {
-        setError('Choose who took the bunker hazard shot.')
-        return
-      }
-      if (!form.drinkName.trim()) {
-        setError('Enter the bunker hazard shot name.')
-        return
-      }
-      parsedSips = 0
+    const parsedSips = Number(form.sips)
+    if (!Number.isFinite(parsedSips) || parsedSips <= 0) {
+      setError('Enter a valid sip count (1 or more).')
+      return
     }
 
     setSaving(true)
@@ -189,8 +170,6 @@ export default function StandardHoleForm({
       split_g_bonus: effectiveSplitGBonus,
       bonus_penalty: effectiveBonusPenalty,
       notes: notesWithAdjustmentTokens || null,
-      is_bunker_hazard: isBunkerHazardHole,
-      drinker_name: isBunkerHazardHole ? form.drinkerName.trim() : null,
     }
 
     const { error: upsertError } = await supabase
@@ -258,86 +237,43 @@ export default function StandardHoleForm({
       <section style={styles.section}>
         <h5 style={styles.sectionTitle}>Score</h5>
 
-        {!isBunkerHazardHole ? (
-          <>
-            <div style={styles.inlineGrid}>
-              <label style={styles.field}>
-                <span style={styles.label}>
-                  Number of sips <em style={styles.requiredTag}>(required)</em>
-                </span>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={form.sips}
-                  onChange={(e) => updateField('sips', e.target.value)}
-                  style={styles.input}
-                  placeholder="1"
-                />
-              </label>
+        <div style={styles.inlineGrid}>
+          <label style={styles.field}>
+            <span style={styles.label}>
+              Number of sips <em style={styles.requiredTag}>(required)</em>
+            </span>
+            <input
+              type="number"
+              min="1"
+              required
+              value={form.sips}
+              onChange={(e) => updateField('sips', e.target.value)}
+              style={styles.input}
+              placeholder="1"
+            />
+          </label>
 
-              <label style={styles.field}>
-                <span style={styles.label}>
-                  Drink name <em style={styles.optionalTag}>(optional)</em>
-                </span>
-                <input
-                  value={form.drinkName}
-                  onChange={(e) => updateField('drinkName', e.target.value)}
-                  style={styles.input}
-                  placeholder="Example: Guinness"
-                />
-              </label>
-            </div>
+          <label style={styles.field}>
+            <span style={styles.label}>
+              Drink name <em style={styles.optionalTag}>(optional)</em>
+            </span>
+            <input
+              value={form.drinkName}
+              onChange={(e) => updateField('drinkName', e.target.value)}
+              style={styles.input}
+              placeholder="Example: Guinness"
+            />
+          </label>
+        </div>
 
-            <label style={styles.checkboxRow}>
-              <input
-                type="checkbox"
-                checked={form.isGuinness}
-                onChange={(e) => updateField('isGuinness', e.target.checked)}
-              />
-              Guinness bonus (-1)
-            </label>
-          </>
-        ) : (
-          <>
-            <p style={styles.inlineNote}>
-              Bunker hazard shots are recorded separately and do not change your total score.
-            </p>
-
-            <div style={styles.inlineGrid}>
-              <label style={styles.field}>
-                <span style={styles.label}>
-                  Who took the bunker hazard shot{' '}
-                  <em style={styles.requiredTag}>(required)</em>
-                </span>
-                <select
-                  value={form.drinkerName}
-                  onChange={(e) => updateField('drinkerName', e.target.value)}
-                  style={styles.input}
-                >
-                  <option value="">Select team member</option>
-                  {team.members?.map((member) => (
-                    <option key={member} value={member}>
-                      {member}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label style={styles.field}>
-                <span style={styles.label}>
-                  Shot name <em style={styles.requiredTag}>(required)</em>
-                </span>
-                <input
-                  value={form.drinkName}
-                  onChange={(e) => updateField('drinkName', e.target.value)}
-                  style={styles.input}
-                  placeholder="Example: Baby Guinness"
-                />
-              </label>
-            </div>
-          </>
-        )}
+        <label style={styles.checkboxRow}>
+          <input
+            type="checkbox"
+            checked={form.isGuinness}
+            onChange={(e) => updateField('isGuinness', e.target.checked)}
+          />
+          Guinness bonus (-1)
+        </label>
       </section>
 
       <section style={styles.section}>

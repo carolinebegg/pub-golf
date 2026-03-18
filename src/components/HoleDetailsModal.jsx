@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import StandardHoleForm from './StandardHoleForm'
 import KegStandSection from './KegStandSection'
 import PitcherRaceSection from './PitcherRaceSection'
-import LeaderboardCard from './LeaderboardCard'
+import HoleLeaderboard from './HoleLeaderboard'
 import PrimaryActionButton from './PrimaryActionButton'
 import { supabase } from '../lib/supabase'
 import {
@@ -479,103 +479,36 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
           className="hole-detail-section"
           style={{ paddingTop: 24, borderTop: 'none' }}
         >
-          <div
-            style={{
-              display: 'grid',
-              gap: 10,
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            }}
-          >
-            <LeaderboardCard
-              sections={[
-                {
-                  id: 'best-split-g-hole',
-                  title: 'Best Split G',
-                  loading: false,
-                  rows: bestLeaderboard,
-                  emptyText: 'No votes yet.',
-                  getKey: (row) => `${row.teamId}::${row.memberName}`,
-                  renderRow: (row, index) => (
-                    <>
-                      <span style={{ fontSize: '1.1rem', minWidth: 28, textAlign: 'center' }}>
-                        {index === 0
-                          ? '🥇'
-                          : index === 1
-                          ? '🥈'
-                          : index === 2
-                          ? '🥉'
-                          : `#${index + 1}`}
-                      </span>
-                      <div style={{ flex: 1, display: 'grid', gap: 1, minWidth: 0 }}>
-                        <span style={{ fontWeight: 700, color: '#1f3027', fontSize: '0.9rem' }}>
-                          {row.memberName}
-                        </span>
-                        <span style={{ color: '#6a7d72', fontSize: '0.8rem' }}>
-                          {row.teamName || 'Team'}
-                        </span>
-                      </div>
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          color: '#1f5a3a',
-                          fontSize: '0.88rem',
-                          fontVariantNumeric: 'tabular-nums',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {row.votes} vote{row.votes === 1 ? '' : 's'}
-                      </span>
-                    </>
-                  ),
-                },
-              ]}
-            />
-
-            <LeaderboardCard
-              sections={[
-                {
-                  id: 'worst-split-g-hole',
-                  title: 'Worst Split G',
-                  loading: false,
-                  rows: worstLeaderboard,
-                  emptyText: 'No votes yet.',
-                  getKey: (row) => `${row.teamId}::${row.memberName}`,
-                  renderRow: (row, index) => (
-                    <>
-                      <span style={{ fontSize: '1.1rem', minWidth: 28, textAlign: 'center' }}>
-                        {index === 0
-                          ? '🥇'
-                          : index === 1
-                          ? '🥈'
-                          : index === 2
-                          ? '🥉'
-                          : `#${index + 1}`}
-                      </span>
-                      <div style={{ flex: 1, display: 'grid', gap: 1, minWidth: 0 }}>
-                        <span style={{ fontWeight: 700, color: '#1f3027', fontSize: '0.9rem' }}>
-                          {row.memberName}
-                        </span>
-                        <span style={{ color: '#6a7d72', fontSize: '0.8rem' }}>
-                          {row.teamName || 'Team'}
-                        </span>
-                      </div>
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          color: '#1f5a3a',
-                          fontSize: '0.88rem',
-                          fontVariantNumeric: 'tabular-nums',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {row.votes} vote{row.votes === 1 ? '' : 's'}
-                      </span>
-                    </>
-                  ),
-                },
-              ]}
-            />
-          </div>
+          <HoleLeaderboard
+            layout="split"
+            gridMinWidth={220}
+            sections={[
+              {
+                id: 'best-split-g-hole',
+                title: 'Best Split G',
+                rows: bestLeaderboard,
+                emptyText: 'No votes yet.',
+                getKey: (row) => `${row.teamId}::${row.memberName}`,
+                columns: (row) => ({
+                  primary: row.memberName,
+                  secondary: row.teamName || 'Team',
+                  stat: `${row.votes} vote${row.votes === 1 ? '' : 's'}`,
+                }),
+              },
+              {
+                id: 'worst-split-g-hole',
+                title: 'Worst Split G',
+                rows: worstLeaderboard,
+                emptyText: 'No votes yet.',
+                getKey: (row) => `${row.teamId}::${row.memberName}`,
+                columns: (row) => ({
+                  primary: row.memberName,
+                  secondary: row.teamName || 'Team',
+                  stat: `${row.votes} vote${row.votes === 1 ? '' : 's'}`,
+                }),
+              },
+            ]}
+          />
         </div>
       ) : null}
     </form>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { buildPitcherLeaderboard } from '../lib/helpers'
-import LeaderboardCard from './LeaderboardCard'
+import HoleLeaderboard from './HoleLeaderboard'
 import PrimaryActionButton from './PrimaryActionButton'
 
 export default function PitcherRaceSection({
@@ -33,7 +33,7 @@ export default function PitcherRaceSection({
     }
 
     if (myFinish) {
-      setMessage('Finish already recorded. Use reset if you need to submit again.')
+      setError('Finish already recorded. Use reset if you need to submit again.')
       return
     }
 
@@ -174,7 +174,8 @@ export default function PitcherRaceSection({
       </section>
 
       {showResults && (
-        <LeaderboardCard
+        <HoleLeaderboard
+          layout="stacked"
           sections={[
             {
               id: 'finish-order',
@@ -183,20 +184,11 @@ export default function PitcherRaceSection({
               rows: leaderboard,
               emptyText: 'No finishes yet.',
               getKey: (row) => row.id || row.team_id,
-              renderRow: (row, index) => (
-                <>
-                  <span style={styles.leaderboardRank}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                  </span>
-                  <div style={styles.leaderboardInfo}>
-                    <span style={styles.leaderboardName}>{row.teamLabel}</span>
-                    <span style={styles.leaderboardMeta}>
-                      {new Date(row.finished_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <span style={styles.leaderboardStat}>+{row.rankScore}</span>
-                </>
-              ),
+              columns: (row) => ({
+                primary: row.teamLabel,
+                secondary: new Date(row.finished_at).toLocaleTimeString(),
+                stat: `+${row.rankScore}`,
+              }),
             },
           ]}
         />
@@ -265,42 +257,6 @@ const styles = {
     background: '#f3f5f3',
     color: '#97a29a',
     cursor: 'not-allowed',
-  },
-  leaderboardRank: {
-    fontSize: '1.1rem',
-    minWidth: 28,
-    textAlign: 'center',
-  },
-  leaderboardInfo: {
-    flex: 1,
-    display: 'grid',
-    gap: 1,
-    minWidth: 0,
-  },
-  leaderboardName: {
-    fontWeight: 700,
-    color: '#1f3027',
-    fontSize: '0.9rem',
-  },
-  leaderboardMeta: {
-    color: '#6a7d72',
-    fontSize: '0.8rem',
-  },
-  leaderboardStat: {
-    fontWeight: 700,
-    color: '#1f5a3a',
-    fontSize: '0.88rem',
-    whiteSpace: 'nowrap',
-  },
-  leaderboardEmpty: {
-    padding: '8px 14px',
-    color: '#6a7d72',
-    fontSize: '0.88rem',
-  },
-  success: {
-    color: '#17663a',
-    margin: 0,
-    fontWeight: 700,
   },
   error: {
     color: '#a12626',

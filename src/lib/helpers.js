@@ -72,6 +72,13 @@ export function calculateTeamAverageKegSeconds(entries) {
   return total / count
 }
 
+/** Round keg times to centiseconds so ties match across floats / averages. */
+export function kegComparableSeconds(value) {
+  const n = toNumber(value, NaN)
+  if (!Number.isFinite(n) || n < 0) return null
+  return Math.round(n * 100) / 100
+}
+
 /**
  * Standard competition ranking:
  * values [10, 9, 9, 7] -> ranks [0, 1, 1, 3]
@@ -159,7 +166,21 @@ export function buildKegStandTeamLeaderboard(entries = []) {
       return a.team_id.localeCompare(b.team_id)
     })
 
-  return assignRankScores(rows, (row) => row.average)
+  return assignRankScores(rows, (row) => kegComparableSeconds(row.average))
+}
+
+/**
+ * Individual keg entries sorted longest-first with competition rankScore (ties share rank).
+ */
+export function rankKegStandIndividualEntries(entries = []) {
+  const valid = entries.filter((e) => kegComparableSeconds(e?.seconds) !== null)
+  const sorted = [...valid].sort((a, b) => {
+    const nb = kegComparableSeconds(b.seconds)
+    const na = kegComparableSeconds(a.seconds)
+    if (nb !== na) return nb - na
+    return String(a.member_name || '').localeCompare(String(b.member_name || ''))
+  })
+  return assignRankScores(sorted, (row) => kegComparableSeconds(row.seconds))
 }
 
 /**
