@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatSeconds } from '../lib/helpers'
 
-const RANK_ORDER = ['S', 'A', 'B', 'C', 'D', 'E', 'F']
-
 /**
  * Expected shape when wired to public.player_stats (backend).
  * Uses keg_stand_length_seconds (numeric 6,2).
@@ -14,18 +12,6 @@ function formatStatValue(key, value) {
     return Number.isFinite(n) ? formatSeconds(n) : '—'
   }
   return String(value)
-}
-
-function rankSortIndex(rank) {
-  const r = String(rank ?? '').toUpperCase().trim()
-  const i = RANK_ORDER.indexOf(r)
-  return i === -1 ? RANK_ORDER.length : i
-}
-
-export function sortPlayersByRank(players) {
-  return [...players].sort(
-    (a, b) => rankSortIndex(a.rank) - rankSortIndex(b.rank)
-  )
 }
 
 export default function PlayerCard({
@@ -43,7 +29,6 @@ export default function PlayerCard({
   const averageSips = stats ? formatStatValue('average_sips', stats.average_sips) : '—'
   const kegStandLength = stats ? formatStatValue('keg_stand_length_seconds', stats.keg_stand_length_seconds) : '—'
   const holesCompleted = stats ? formatStatValue('holes_completed', stats.holes_completed) : '—'
-  const awards = stats?.awards != null && stats.awards !== '' ? String(stats.awards) : '—'
 
   function openBack() {
     setFlipped(true)
@@ -130,13 +115,9 @@ export default function PlayerCard({
                 <dt>Holes completed</dt>
                 <dd>{holesCompleted}</dd>
               </div>
-              <div className="player-card-stat">
-                <dt>Awards</dt>
-                <dd>{awards}</dd>
-              </div>
             </dl>
             {!stats && (
-              <p className="player-card-stats-note">Stats and awards will appear here once the backend is connected.</p>
+              <p className="player-card-stats-note">Stats will appear here once the backend is connected.</p>
             )}
           </div>
         </div>

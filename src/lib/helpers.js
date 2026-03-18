@@ -351,6 +351,23 @@ export function formatSeconds(value) {
   return `${toNumber(value, 0).toFixed(2)}s`
 }
 
+const PLAYER_RANK_ORDER = ['S', 'A', 'B', 'C', 'D', 'E', 'F']
+
+function playerRankSortIndex(rank) {
+  const r = String(rank ?? '').toUpperCase().trim()
+  const i = PLAYER_RANK_ORDER.indexOf(r)
+  return i === -1 ? PLAYER_RANK_ORDER.length : i
+}
+
+/**
+ * Sorts players by rank (S, A, B, C, D, E, F order).
+ */
+export function sortPlayersByRank(players) {
+  return [...(players || [])].sort(
+    (a, b) => playerRankSortIndex(a.rank) - playerRankSortIndex(b.rank)
+  )
+}
+
 /**
  * Builds the full overall leaderboard across:
  * - standard holes from scores
