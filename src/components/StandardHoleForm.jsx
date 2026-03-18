@@ -298,6 +298,14 @@ export default function StandardHoleForm({
       return
     }
 
+    if (hole?.id && team?.id) {
+      await supabase
+        .from('bunker_hazard_entries')
+        .delete()
+        .eq('hole_id', hole.id)
+        .eq('team_id', team.id)
+    }
+
     setForm(getInitialFormState(null))
     setDeleting(false)
 
