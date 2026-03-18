@@ -5,6 +5,11 @@ const SCORE_ADJUSTMENT_TOKENS = {
   teamKaraoke: '[adj:team-karaoke]',
   fadoBestGSplit: '[adj:fado-best-g-split]',
   fadoWorstGSplit: '[adj:fado-worst-g-split]',
+  worm: '[adj:worm]',
+  tapsterPhotobooth: '[adj:tapster-photobooth]',
+  guinnessGlass: '[adj:guinness-glass]',
+  vlogIrish: '[adj:vlog-irish]',
+  moonStranger: '[adj:moon-stranger]',
 }
 
 function stripAdjustmentTokens(notes) {
@@ -14,6 +19,11 @@ function stripAdjustmentTokens(notes) {
     .replaceAll(SCORE_ADJUSTMENT_TOKENS.teamKaraoke, '')
     .replaceAll(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit, '')
     .replaceAll(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.guinnessGlass, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.worm, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.tapsterPhotobooth, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.vlogIrish, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.moonStranger, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
@@ -169,6 +179,15 @@ function renderHoleDetails(hole, players = []) {
     )
   }
 
+  if (hole.details?.isGuinnessVoteHole) {
+    if (hole.score === null) return 'No votes yet'
+    const parts = []
+    if (hole.details.bestAward) parts.push('Best Split G (−3)')
+    if (hole.details.worstAward) parts.push('Worst Split G (+3)')
+    if (!parts.length) parts.push('No best/worst award')
+    return parts.join(' • ')
+  }
+
   const details = hole.details || {}
 
   if (hole.holeType === 'standard' && hole.bunkerEntry) {
@@ -195,6 +214,11 @@ function renderHoleDetails(hole, players = []) {
   const hasTeamKaraoke = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.teamKaraoke)
   const hasFadoBestGSplit = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit)
   const hasFadoWorstGSplit = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit)
+  const hasWorm = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.worm)
+  const hasTapsterPhotobooth = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.tapsterPhotobooth)
+  const hasGuinnessGlass = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.guinnessGlass)
+  const hasVlogIrish = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.vlogIrish)
+  const hasMoonStranger = rawNotes.includes(SCORE_ADJUSTMENT_TOKENS.moonStranger)
 
   const drinkerName = details.player_id != null ? players.find((p) => p.id === details.player_id)?.name : null
   if (drinkerName) bits.push(drinkerName)
@@ -218,6 +242,11 @@ function renderHoleDetails(hole, players = []) {
   if (hasTeamKaraoke) flags.push('team karaoke (-5)')
   if (hasFadoBestGSplit) flags.push('best g split (-1)')
   if (hasFadoWorstGSplit) flags.push('worst g split (+3)')
+  if (hasWorm) flags.push('do the worm (-2)')
+  if (hasTapsterPhotobooth) flags.push('tapster photobooth (-4)')
+  if (hasGuinnessGlass) flags.push('steal a Guinness glass (-2)')
+  if (hasVlogIrish) flags.push('vlog with Irish person (-2)')
+  if (hasMoonStranger) flags.push('moon a stranger (-2)')
 
   const adjustedSplitGBonus =
     Number(details.split_g_bonus || 0) -
@@ -226,7 +255,12 @@ function renderHoleDetails(hole, players = []) {
   const adjustedBonusPenalty =
     Number(details.bonus_penalty || 0) -
     (hasTeamKaraoke ? -5 : 0) -
-    (hasFadoWorstGSplit ? 3 : 0)
+    (hasFadoWorstGSplit ? 3 : 0) -
+    (hasWorm ? -2 : 0) -
+    (hasTapsterPhotobooth ? -4 : 0) -
+    (hasGuinnessGlass ? -2 : 0) -
+    (hasVlogIrish ? -2 : 0) -
+    (hasMoonStranger ? -2 : 0)
 
   if (adjustedSplitGBonus) flags.push(`Split the G bonus ${adjustedSplitGBonus}`)
   if (adjustedBonusPenalty) flags.push(`bonus/penalty ${adjustedBonusPenalty}`)

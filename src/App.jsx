@@ -25,6 +25,9 @@ function isHoleComplete(hole, holeState) {
       return Boolean(holeState.pitcherFinish)
     case 'standard':
     default:
+      if (hole.has_guinness) {
+        return Boolean(holeState.guinnessVote)
+      }
       return Boolean(holeState.existingScore)
   }
 }
@@ -242,10 +245,19 @@ export default function App() {
           byId[finish.hole_id].pitcherFinish = finish
         }
       }
+
+      for (const vote of guinnessVotes) {
+        if (
+          vote.voting_team_id === loggedInTeam.id &&
+          byId[vote.hole_id]
+        ) {
+          byId[vote.hole_id].guinnessVote = vote
+        }
+      }
     }
 
     return byId
-  }, [holes, scores, kegStandEntries, pitcherFinishes, bunkerHazardEntries, loggedInTeam])
+  }, [holes, scores, kegStandEntries, pitcherFinishes, bunkerHazardEntries, guinnessVotes, loggedInTeam])
 
   const orderedHoles = useMemo(() => sortHolesByNumber(holes), [holes])
 
@@ -291,8 +303,10 @@ export default function App() {
         kegStandEntries,
         pitcherFinishes,
         bunkerHazardEntries,
+        guinnessVotes,
+        players,
       }),
-    [teamsWithMembers, holes, scores, kegStandEntries, pitcherFinishes, bunkerHazardEntries]
+    [teamsWithMembers, holes, scores, kegStandEntries, pitcherFinishes, bunkerHazardEntries, guinnessVotes, players]
   )
 
   const loggedInTeamStanding =

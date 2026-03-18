@@ -369,8 +369,61 @@ export function sortPlayersByRank(players) {
 }
 
 /**
+ * For Split the G (Guinness vote) holes: teams who have voted get −3 (best), +3 (worst), or 0.
+ * Teams who haven't voted yet get score null and the hole is not completed for them.
+ * Returns null if no votes yet for this hole; otherwise { bestTeams, worstTeams, votedTeamIds }.
+ */
+export function getGuinnessHoleVoteTeamEffects(holeId, guinnessVotes = [], players = []) {
+  const votes = (guinnessVotes || []).filter((v) => v.hole_id === holeId)
+  if (votes.length === 0) return null
+
+  const votedTeamIds = new Set(votes.map((v) => v.voting_team_id).filter(Boolean))
+
+  const playerById = new Map((players || []).map((p) => [p.id, p]))
+  const bestCounts = new Map()
+  const worstCounts = new Map()
+
+  for (const v of votes) {
+    if (v.best_voted_player_id) {
+      const id = v.best_voted_player_id
+      bestCounts.set(id, (bestCounts.get(id) || 0) + 1)
+    }
+    if (v.worst_voted_player_id) {
+      const id = v.worst_voted_player_id
+      worstCounts.set(id, (worstCounts.get(id) || 0) + 1)
+    }
+  }
+
+  const maxBest = bestCounts.size > 0 ? Math.max(...bestCounts.values()) : 0
+  const maxWorst = worstCounts.size > 0 ? Math.max(...worstCounts.values()) : 0
+
+  const bestTeams = new Set()
+  if (maxBest > 0) {
+    for (const [playerId, count] of bestCounts) {
+      if (count === maxBest) {
+        const tid = playerById.get(playerId)?.team_id
+        if (tid != null) bestTeams.add(tid)
+      }
+    }
+  }
+
+  const worstTeams = new Set()
+  if (maxWorst > 0) {
+    for (const [playerId, count] of worstCounts) {
+      if (count === maxWorst) {
+        const tid = playerById.get(playerId)?.team_id
+        if (tid != null) worstTeams.add(tid)
+      }
+    }
+  }
+
+  return { bestTeams, worstTeams, votedTeamIds }
+}
+
+/**
  * Builds the full overall leaderboard across:
  * - standard holes from scores
+ * - Split the G holes from guinness vote tallies (−3 / +3 / 0)
  * - keg stand holes by average seconds rank
  * - pitcher holes by finish rank
  *
@@ -394,8 +447,20 @@ export function buildOverallLeaderboardData({
   kegStandEntries = [],
   pitcherFinishes = [],
   bunkerHazardEntries = [],
+  guinnessVotes = [],
+  players = [],
 }) {
   const sortedHoles = sortHolesByNumber(holes)
+
+  const guinnessEffectsByHoleId = new Map()
+  for (const hole of sortedHoles) {
+    if (getEffectiveHoleType(hole) === 'standard' && hole.has_guinness) {
+      guinnessEffectsByHoleId.set(
+        hole.id,
+        getGuinnessHoleVoteTeamEffects(hole.id, guinnessVotes, players)
+      )
+    }
+  }
 
   const leaderboardRows = teams.map((team) => {
     let totalScore = 0
@@ -465,6 +530,46 @@ export function buildOverallLeaderboardData({
             finished_at: teamRankRow?.finished_at ?? null,
             rank: teamRankRow?.rankScore ?? null,
           },
+        }
+      }
+
+      if (hole.has_guinness) {
+        const eff = guinnessEffectsByHoleId.get(hole.id)
+        const teamHasVoted = eff?.votedTeamIds?.has(team.id)
+
+        if (!eff || !teamHasVoted) {
+          return {
+            holeId: hole.id,
+            holeNumber: hole.hole_number,
+            holeName: hole.bar_name,
+            holeType,
+            displayTypeLabel: getHoleDisplayLabel(hole, holeType),
+            score: null,
+            details: { isGuinnessVoteHole: true },
+            bunkerEntry: null,
+          }
+        }
+
+        let score = 0
+        if (eff.bestTeams.has(team.id)) score -= 3
+        if (eff.worstTeams.has(team.id)) score += 3
+
+        totalScore += score
+        holesCompleted += 1
+
+        return {
+          holeId: hole.id,
+          holeNumber: hole.hole_number,
+          holeName: hole.bar_name,
+          holeType,
+          displayTypeLabel: getHoleDisplayLabel(hole, holeType),
+          score,
+          details: {
+            isGuinnessVoteHole: true,
+            bestAward: eff.bestTeams.has(team.id),
+            worstAward: eff.worstTeams.has(team.id),
+          },
+          bunkerEntry: null,
         }
       }
 

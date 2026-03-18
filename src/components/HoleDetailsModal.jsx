@@ -172,6 +172,7 @@ export default function HoleDetailsModal({
                 hole={hole}
                 team={selectedTeam}
                 allTeams={allTeams}
+                players={players}
                 finishesForHole={pitcherFinishesForHole}
                 pitcherFinish={pitcherFinish}
                 onChanged={onChanged}

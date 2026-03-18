@@ -6,6 +6,11 @@ const SCORE_ADJUSTMENT_TOKENS = {
   teamKaraoke: '[adj:team-karaoke]',
   fadoBestGSplit: '[adj:fado-best-g-split]',
   fadoWorstGSplit: '[adj:fado-worst-g-split]',
+  worm: '[adj:worm]',
+  tapsterPhotobooth: '[adj:tapster-photobooth]',
+  guinnessGlass: '[adj:guinness-glass]',
+  vlogIrish: '[adj:vlog-irish]',
+  moonStranger: '[adj:moon-stranger]',
 }
 
 function normalizeLabel(value) {
@@ -27,6 +32,11 @@ function parseAdjustmentTokensFromNotes(notes) {
     teamKaraoke: raw.includes(SCORE_ADJUSTMENT_TOKENS.teamKaraoke),
     fadoBestGSplit: raw.includes(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit),
     fadoWorstGSplit: raw.includes(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit),
+    worm: raw.includes(SCORE_ADJUSTMENT_TOKENS.worm),
+    tapsterPhotobooth: raw.includes(SCORE_ADJUSTMENT_TOKENS.tapsterPhotobooth),
+    guinnessGlass: raw.includes(SCORE_ADJUSTMENT_TOKENS.guinnessGlass),
+    vlogIrish: raw.includes(SCORE_ADJUSTMENT_TOKENS.vlogIrish),
+    moonStranger: raw.includes(SCORE_ADJUSTMENT_TOKENS.moonStranger),
     cleanNotes: stripAdjustmentTokens(raw),
   }
 }
@@ -38,6 +48,11 @@ function stripAdjustmentTokens(notes) {
     .replaceAll(SCORE_ADJUSTMENT_TOKENS.teamKaraoke, '')
     .replaceAll(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit, '')
     .replaceAll(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.guinnessGlass, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.worm, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.tapsterPhotobooth, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.vlogIrish, '')
+    .replaceAll(SCORE_ADJUSTMENT_TOKENS.moonStranger, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
@@ -49,6 +64,11 @@ function composeNotesWithAdjustmentTokens(notes, form) {
   if (form.teamKaraoke) tokens.push(SCORE_ADJUSTMENT_TOKENS.teamKaraoke)
   if (form.fadoBestGSplit) tokens.push(SCORE_ADJUSTMENT_TOKENS.fadoBestGSplit)
   if (form.fadoWorstGSplit) tokens.push(SCORE_ADJUSTMENT_TOKENS.fadoWorstGSplit)
+  if (form.worm) tokens.push(SCORE_ADJUSTMENT_TOKENS.worm)
+  if (form.tapsterPhotobooth) tokens.push(SCORE_ADJUSTMENT_TOKENS.tapsterPhotobooth)
+  if (form.guinnessGlass) tokens.push(SCORE_ADJUSTMENT_TOKENS.guinnessGlass)
+  if (form.vlogIrish) tokens.push(SCORE_ADJUSTMENT_TOKENS.vlogIrish)
+  if (form.moonStranger) tokens.push(SCORE_ADJUSTMENT_TOKENS.moonStranger)
 
   if (!cleanNotes && !tokens.length) return ''
   if (!cleanNotes) return tokens.join(' ')
@@ -72,17 +92,14 @@ function getInitialFormState(existingScore) {
     spilledDrink: existingScore?.spilled_drink ?? false,
     threwUp: existingScore?.threw_up ?? false,
     photoboothMissing: existingScore?.photobooth_missing ?? false,
-    splitGBonus:
-      existingScore?.split_g_bonus === 0 || existingScore?.split_g_bonus
-        ? String(existingScore.split_g_bonus)
-        : '',
-    bonusPenalty:
-      existingScore?.bonus_penalty === 0 || existingScore?.bonus_penalty
-        ? String(existingScore.bonus_penalty)
-        : '',
     teamKaraoke: noteState.teamKaraoke,
     fadoBestGSplit: noteState.fadoBestGSplit,
     fadoWorstGSplit: noteState.fadoWorstGSplit,
+    worm: noteState.worm,
+    tapsterPhotobooth: noteState.tapsterPhotobooth,
+    guinnessGlass: noteState.guinnessGlass,
+    vlogIrish: noteState.vlogIrish,
+    moonStranger: noteState.moonStranger,
     notes: noteState.cleanNotes,
   }
 }
@@ -121,21 +138,24 @@ export default function StandardHoleForm({
   const drinkerRef = useRef(null)
   const bunkerPlayerRef = useRef(null)
   const bunkerShotRef = useRef(null)
-  const [showAdjustments, setShowAdjustments] = useState(
-    Boolean(existingScore?.split_g_bonus || existingScore?.bonus_penalty)
-  )
+  const [showAdjustments, setShowAdjustments] = useState(() => {
+    const ns = parseAdjustmentTokensFromNotes(existingScore?.notes)
+    return Boolean(ns.worm || ns.tapsterPhotobooth || ns.guinnessGlass || ns.vlogIrish || ns.moonStranger)
+  })
 
   const fergiesHole = isFergiesHole(hole)
   const fadoHole = isFadoHole(hole)
 
-  const effectiveSplitGBonus =
-    Number(form.splitGBonus || 0) +
-    (form.fadoBestGSplit ? 1 : 0)
+  const effectiveSplitGBonus = form.fadoBestGSplit ? 1 : 0
 
   const effectiveBonusPenalty =
-    Number(form.bonusPenalty || 0) +
     (form.teamKaraoke ? -5 : 0) +
-    (form.fadoWorstGSplit ? 3 : 0)
+    (form.fadoWorstGSplit ? 3 : 0) +
+    (form.worm ? -2 : 0) +
+    (form.tapsterPhotobooth ? -4 : 0) +
+    (form.guinnessGlass ? -2 : 0) +
+    (form.vlogIrish ? -2 : 0) +
+    (form.moonStranger ? -2 : 0)
 
   const computedPreviewScore = useMemo(() => {
     const base = calculateStandardHoleScore({
@@ -402,7 +422,7 @@ export default function StandardHoleForm({
             checked={form.isGuinness}
             onChange={(e) => updateField('isGuinness', e.target.checked)}
           />
-          Guinness bonus (-1)
+          Guinness (-1)
         </label>
       </section>
 
@@ -583,33 +603,56 @@ export default function StandardHoleForm({
           style={styles.revealButton}
           onClick={() => setShowAdjustments((current) => !current)}
         >
-          {showAdjustments ? 'Hide manual adjustments' : 'Manual adjustments'}
+          {showAdjustments ? 'Hide Jestering Adjustments' : 'Jestering Adjustments'}
         </button>
 
         {showAdjustments ? (
           <div style={styles.adjustmentGrid}>
-            <label style={styles.field}>
-              <span style={styles.label}>Split the G bonus</span>
+            <label style={styles.checkboxRow}>
               <input
-                type="number"
-                value={form.splitGBonus}
-                onChange={(e) => updateField('splitGBonus', e.target.value)}
-                style={styles.input}
-                placeholder="Optional"
+                type="checkbox"
+                checked={form.worm}
+                onChange={(e) => updateField('worm', e.target.checked)}
               />
-              <small style={styles.helperText}>Use a positive number to subtract points.</small>
+              Do the worm on a member of another team (-2)
             </label>
 
-            <label style={styles.field}>
-              <span style={styles.label}>Manual adjustment</span>
+            {hole.bar_name === 'Tapster' ? (
+              <label style={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={form.tapsterPhotobooth}
+                  onChange={(e) => updateField('tapsterPhotobooth', e.target.checked)}
+                />
+                Romantic *shirtless* tapster photobooth flic with a team member (-4)
+              </label>
+            ) : null}
+
+            <label style={styles.checkboxRow}>
               <input
-                type="number"
-                value={form.bonusPenalty}
-                onChange={(e) => updateField('bonusPenalty', e.target.value)}
-                style={styles.input}
-                placeholder="Optional"
+                type="checkbox"
+                checked={form.guinnessGlass}
+                onChange={(e) => updateField('guinnessGlass', e.target.checked)}
               />
-              <small style={styles.helperText}>Use plus or minus values as needed.</small>
+              Steal a Guinness glass (-2)
+            </label>
+
+            <label style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={form.vlogIrish}
+                onChange={(e) => updateField('vlogIrish', e.target.checked)}
+              />
+              Vlog with an actual Irish person: they must have an accent (-2)
+            </label>
+
+            <label style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={form.moonStranger}
+                onChange={(e) => updateField('moonStranger', e.target.checked)}
+              />
+              Moon a stranger (-2)
             </label>
           </div>
         ) : null}

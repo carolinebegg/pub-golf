@@ -20,6 +20,8 @@ export default function LeaderboardView({
         scores={scores}
         kegStandEntries={kegStandEntries}
         pitcherFinishes={pitcherFinishes}
+        guinnessVotes={guinnessVotes}
+        players={players}
         leaderboardData={leaderboardData}
         onOpenBreakdown={onOpenBreakdown}
       />

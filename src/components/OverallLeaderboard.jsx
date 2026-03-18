@@ -8,6 +8,8 @@ export default function OverallLeaderboard({
   kegStandEntries = [],
   pitcherFinishes = [],
   bunkerHazardEntries = [],
+  guinnessVotes = [],
+  players = [],
   leaderboardData = null,
   onOpenBreakdown,
 }) {
@@ -23,8 +25,10 @@ export default function OverallLeaderboard({
       kegStandEntries,
       pitcherFinishes,
       bunkerHazardEntries,
+      guinnessVotes,
+      players,
     })
-  }, [teams, holes, scores, kegStandEntries, pitcherFinishes, bunkerHazardEntries, leaderboardData])
+  }, [teams, holes, scores, kegStandEntries, pitcherFinishes, bunkerHazardEntries, guinnessVotes, players, leaderboardData])
 
   if (!teams.length) {
     return (
