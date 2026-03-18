@@ -17,6 +17,7 @@ export default function HoleCard({
   holeStatus = 'not-started',
   bunkerEntry = null,
   players = [],
+  scoreForHole = null,
 }) {
   const holeType = getEffectiveHoleType(hole)
 
@@ -99,9 +100,30 @@ export default function HoleCard({
           </div>
         </div>
 
-        <button type="button" onClick={onOpenDetails} style={styles.openButton}>
-          Open hole details
-        </button>
+        <div style={styles.bottomRow}>
+          <button type="button" onClick={onOpenDetails} style={styles.openButton}>
+            Open hole details
+          </button>
+          {selectedTeam && (
+            <div style={styles.holeScoreBlock}>
+              <div
+                style={{
+                  ...styles.holeScoreValue,
+                  ...(scoreForHole === null || scoreForHole === undefined
+                    ? styles.holeScoreUnset
+                    : null),
+                }}
+              >
+                {scoreForHole !== null && scoreForHole !== undefined
+                  ? Number(scoreForHole) > 0
+                    ? `+${scoreForHole}`
+                    : scoreForHole
+                  : '—'}
+              </div>
+              <div style={styles.holeScoreLabel}>score</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -303,8 +325,14 @@ const styles = {
     border: '1px solid #f0d8a8',
     color: '#6f5720',
   },
+  bottomRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
   openButton: {
-    justifySelf: 'start',
     border: '1px solid #c9d7cc',
     background: '#fff',
     color: 'var(--green-700)',
@@ -314,5 +342,24 @@ const styles = {
     minHeight: 44,
     fontSize: '0.84rem',
     cursor: 'pointer',
+  },
+  holeScoreBlock: {
+    textAlign: 'right',
+    minWidth: 62,
+  },
+  holeScoreValue: {
+    fontSize: '1.4rem',
+    fontWeight: 800,
+    color: 'var(--green-700)',
+    lineHeight: 1,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  holeScoreUnset: {
+    color: '#7a8a81',
+  },
+  holeScoreLabel: {
+    color: '#637168',
+    fontSize: '0.85rem',
+    marginTop: 4,
   },
 }

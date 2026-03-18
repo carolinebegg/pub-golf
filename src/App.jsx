@@ -315,6 +315,16 @@ export default function App() {
         null
       : null
 
+  const holeScoreById = useMemo(() => {
+    const breakdown = loggedInTeamStanding?.holeBreakdown
+    if (!Array.isArray(breakdown)) return {}
+    const byId = {}
+    for (const row of breakdown) {
+      byId[row.holeId] = row.score
+    }
+    return byId
+  }, [loggedInTeamStanding?.holeBreakdown])
+
   const teamPanelSummary = useMemo(() => {
     if (!loggedInTeam?.id) return null
 
@@ -497,6 +507,7 @@ export default function App() {
                   holes={orderedHoles}
                   holeDataById={holeDataById}
                   holeStatusById={holeStatusById}
+                  holeScoreById={holeScoreById}
                   onOpenHoleDetails={handleOpenHoleDetails}
                   selectedTeam={loggedInTeam}
                   players={players}

@@ -4,6 +4,7 @@ export default function HolesView({
   holes = [],
   holeDataById = {},
   holeStatusById = {},
+  holeScoreById = {},
   onOpenHoleDetails,
   selectedTeam = null,
   players = [],
@@ -35,6 +36,7 @@ export default function HolesView({
               holeStatus={holeStatusById[hole.id] || 'not-started'}
               bunkerEntry={holeState.bunkerEntry ?? null}
               players={players}
+              scoreForHole={holeScoreById[hole.id] ?? null}
             />
           )
         })}
