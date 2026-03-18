@@ -8,6 +8,7 @@ import {
 import TeamLogin, { TEAM_LOGIN_STORAGE_KEY } from './components/TeamLogin'
 import LeaderboardView from './components/LeaderboardView'
 import HolesView from './components/HolesView'
+import PlayersView from './components/PlayersView'
 import TeamBreakdownModal from './components/TeamBreakdownModal'
 import HoleDetailsModal from './components/HoleDetailsModal'
 import './App.css'
@@ -52,7 +53,7 @@ export default function App() {
   const [activeView, setActiveView] = useState(() => {
     try {
       const stored = localStorage.getItem('pub-golf-active-view')
-      return stored === 'holes' || stored === 'leaderboard' ? stored : 'leaderboard'
+      return stored === 'holes' || stored === 'leaderboard' || stored === 'players' ? stored : 'leaderboard'
     } catch {
       return 'leaderboard'
     }
@@ -415,7 +416,7 @@ export default function App() {
             onEnterScore={handleEnterScore}
           />
 
-          <div className="view-switch" role="tablist" aria-label="Switch between leaderboard and holes">
+          <div className="view-switch" role="tablist" aria-label="Switch between leaderboard, holes, and players">
             <button
               type="button"
               role="tab"
@@ -435,6 +436,16 @@ export default function App() {
             >
               Holes
             </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === 'players'}
+              className={`view-switch-button ${activeView === 'players' ? 'is-active' : ''}`}
+              onClick={() => handleSwitchView('players')}
+            >
+              Players
+            </button>
           </div>
 
           {loading && <div className="app-card">Loading...</div>}
@@ -442,7 +453,7 @@ export default function App() {
 
           {!loading && !error && (
             <>
-              {activeView === 'leaderboard' ? (
+              {activeView === 'leaderboard' && (
                 <LeaderboardView
                   teams={teamsWithMembers}
                   holes={holes}
@@ -454,7 +465,8 @@ export default function App() {
                   players={players}
                   onOpenBreakdown={handleOpenBreakdown}
                 />
-              ) : (
+              )}
+              {activeView === 'holes' && (
                 <HolesView
                   holes={orderedHoles}
                   holeDataById={holeDataById}
@@ -463,6 +475,9 @@ export default function App() {
                   selectedTeam={loggedInTeam}
                   players={players}
                 />
+              )}
+              {activeView === 'players' && (
+                <PlayersView players={players} teams={teams} />
               )}
             </>
           )}

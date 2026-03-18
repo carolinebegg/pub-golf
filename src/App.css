@@ -350,6 +350,185 @@ p {
   gap: 10px;
 }
 
+/* Players grid and cards */
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.player-card {
+  appearance: none;
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(13, 35, 20, 0.06);
+}
+
+.player-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(13, 35, 20, 0.1);
+}
+
+.player-card:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
+}
+
+.player-card-rank {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--green-700);
+  margin-bottom: 6px;
+}
+
+.player-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.player-card-team {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.player-card-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 30, 23, 0.42);
+  backdrop-filter: blur(2px);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: player-overlay-in 0.25s ease;
+}
+
+@keyframes player-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.player-card-back-panel {
+  position: relative;
+  width: min(22rem, 100%);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 18px;
+  box-shadow: 0 28px 70px rgba(11, 27, 17, 0.32);
+  padding: 20px 20px 24px;
+  animation: player-card-flip-in 0.35s ease;
+}
+
+@keyframes player-card-flip-in {
+  from {
+    opacity: 0;
+    transform: perspective(400px) rotateY(-12deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(400px) rotateY(0) scale(1);
+  }
+}
+
+.player-card-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-card-close:hover {
+  background: var(--green-100);
+  color: var(--green-700);
+}
+
+.player-card-back-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: baseline;
+  margin-bottom: 18px;
+  padding-right: 28px;
+}
+
+.player-card-back-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.player-card-back-team {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.player-card-back-rank {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--green-700);
+  margin-left: auto;
+}
+
+.player-card-stats {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.player-card-stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 10px;
+  background: var(--green-100);
+  border-radius: 10px;
+  border: 1px solid #c8dfd0;
+}
+
+.player-card-stat dt {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.player-card-stat dd {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.player-card-stats-note {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
 .breakdown-overlay {
   position: fixed;
   inset: 0;
@@ -573,6 +752,10 @@ p {
   .view-switch {
     width: 100%;
     display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .players-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -612,6 +795,10 @@ p {
 
   .hole-details-modal {
     width: 100%;
+  }
+
+  .players-grid {
+    grid-template-columns: 1fr;
   }
 
   .breakdown-modal-header {
