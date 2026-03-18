@@ -98,12 +98,19 @@ export default function TeamBreakdownModal({ team = null, players = [], onClose 
 }
 
 function formatTeamTitle(team) {
-  if (team.theme) return team.theme
-  if (team.teamName) return team.teamName
-  if (team.teamNumber !== null && team.teamNumber !== undefined) {
-    return `Team ${team.teamNumber}`
-  }
-  return 'Team'
+  return team.theme || team.teamName || 'Team'
+}
+
+function ordinal(n) {
+  if (!Number.isFinite(n) || n < 1) return String(n)
+  const s = String(n)
+  const last = s.slice(-1)
+  const lastTwo = s.slice(-2)
+  if (lastTwo === '11' || lastTwo === '12' || lastTwo === '13') return `${n}th`
+  if (last === '1') return `${n}st`
+  if (last === '2') return `${n}nd`
+  if (last === '3') return `${n}rd`
+  return `${n}th`
 }
 
 function formatMembers(members) {
@@ -117,20 +124,49 @@ function formatMembers(members) {
 function renderHoleDetails(hole, players = []) {
   if (hole.holeType === 'keg_stand') {
     const avg = hole.details?.average
-    const count = hole.details?.count ?? 0
+    const entries = hole.details?.entries ?? []
 
     if (avg === null || avg === undefined) {
       return 'No keg stand entries'
     }
 
-    return `${count} ${count === 1 ? 'entry' : 'entries'} • ${formatSeconds(avg)} average`
+    const bestEntry = entries.length
+      ? entries.reduce((best, e) => {
+          const s = Number(e?.seconds)
+          const bestS = Number(best?.seconds)
+          return Number.isFinite(s) && (!Number.isFinite(bestS) || s > bestS) ? e : best
+        }, null)
+      : null
+    const bestSeconds = bestEntry != null && Number.isFinite(Number(bestEntry.seconds)) ? bestEntry.seconds : null
+    const bestPlayerName = bestEntry?.player_id != null
+      ? players.find((p) => p.id === bestEntry.player_id)?.name ?? null
+      : null
+    const avgStr = formatSeconds(avg)
+    const bestStr = bestSeconds != null ? formatSeconds(bestSeconds) : null
+    return (
+      <>
+        Average: <strong>{avgStr}</strong>
+        {bestStr != null && (
+          <>
+            <span style={{ fontWeight: 'normal' }}> • </span>
+            Best: <strong>{bestStr}</strong>{bestPlayerName ? ` (${bestPlayerName})` : ''}
+          </>
+        )}
+      </>
+    )
   }
 
   if (hole.holeType === 'pitcher') {
-    const finishedAt = hole.details?.finished_at
-    if (!finishedAt) return 'No finish recorded'
+    const rank = hole.details?.rank
+    if (rank == null) return 'No finish recorded'
 
-    return `Finished at ${new Date(finishedAt).toLocaleTimeString()}`
+    const place = Number(rank) + 1
+    const ord = ordinal(place)
+    return (
+      <>
+        Finish: <strong>{ord} place</strong>
+      </>
+    )
   }
 
   const details = hole.details || {}
@@ -148,7 +184,7 @@ function renderHoleDetails(hole, players = []) {
       if (cleanNotes) extras.push(cleanNotes)
     }
 
-    const base = `Bunker hazard: ${who} — ${shot}`
+    const base = `${who} (${shot})`
     if (!extras.length) return base
 
     return `${base} • ${extras.join(' • ')}`
@@ -162,13 +198,15 @@ function renderHoleDetails(hole, players = []) {
 
   const drinkerName = details.player_id != null ? players.find((p) => p.id === details.player_id)?.name : null
   if (drinkerName) bits.push(drinkerName)
-  if (details.sips !== null && details.sips !== undefined) bits.push(`${details.sips} sips`)
-  if (details.drink_name) bits.push(details.drink_name)
-  if (details.paid_by_player_id != null) {
-    const paidByName = players.find((p) => p.id === details.paid_by_player_id)?.name
-    if (paidByName) bits.push(`paid by ${paidByName}`)
+  if (details.sips !== null && details.sips !== undefined) {
+    const n = details.sips
+    bits.push(`${n} ${Number(n) === 1 ? 'sip' : 'sips'}`)
   }
-  if (details.price !== null && details.price !== undefined) bits.push(formatCurrency(details.price))
+  if (details.drink_name) bits.push(details.drink_name)
+  const paidByName = details.paid_by_player_id != null
+    ? players.find((p) => p.id === details.paid_by_player_id)?.name
+    : null
+  const price = details.price !== null && details.price !== undefined ? details.price : null
 
   const flags = []
   if (details.is_guinness) flags.push('Guinness')
@@ -201,6 +239,10 @@ function renderHoleDetails(hole, players = []) {
   const cleanNotes = stripAdjustmentTokens(rawNotes)
   if (cleanNotes) {
     text = text ? `${text} • ${cleanNotes}` : cleanNotes
+  }
+
+  if (paidByName && price != null && Number.isFinite(Number(price))) {
+    text = text ? `${text} | ${formatCurrency(price)} (${paidByName})` : `${formatCurrency(price)} (${paidByName})`
   }
 
   return text || 'Standard hole completed'

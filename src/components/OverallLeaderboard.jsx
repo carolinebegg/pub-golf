@@ -113,13 +113,7 @@ export default function OverallLeaderboard({
 }
 
 function formatTeamTitle(team) {
-  if (team.theme) return team.theme
-  if (team.teamName) return team.teamName
-  if (team.teamNumber !== null && team.teamNumber !== undefined) {
-    return `Team ${team.teamNumber}`
-  }
-
-  return 'Team'
+  return team.theme || team.teamName || 'Team'
 }
 
 function formatMembers(members) {

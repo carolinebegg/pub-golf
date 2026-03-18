@@ -129,7 +129,7 @@ export default function PitcherRaceSection({
       const t = allTeams.find((teamRow) => teamRow.id === row.team_id)
       return {
         ...row,
-        teamLabel: t ? (t.theme || t.name || `Team ${t.team_number}`) : 'Unknown team',
+        teamLabel: t ? (t.theme || 'Team') : 'Unknown team',
       }
     })
   }, [showResults, finishesForHole, allTeams])

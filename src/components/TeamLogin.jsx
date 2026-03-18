@@ -55,8 +55,6 @@ export default function TeamLogin({
 
     const safeTeam = {
       id: selectedTeam.id,
-      name: selectedTeam.name,
-      team_number: selectedTeam.team_number,
       theme: selectedTeam.theme,
       emoji: selectedTeam.emoji,
       members: selectedTeam.members || [],
@@ -71,7 +69,7 @@ export default function TeamLogin({
 
     onLogin?.(safeTeam)
     setJoinCode('')
-    setMessage(`Logged in as ${selectedTeam.name}.`)
+    setMessage(`Logged in as ${selectedTeam.theme || 'Team'}.`)
   }
 
   function handleLogoutClick() {
@@ -91,11 +89,7 @@ export default function TeamLogin({
   if (loggedInTeam) {
     const totalHoles = summary?.totalHoles ?? 0
     const progressLabel = totalHoles > 0 ? `${summary?.completedHoles ?? 0} / ${totalHoles}` : '—'
-    const primaryTeamName = getPrimaryTeamName(loggedInTeam)
-    const secondaryTeamMeta =
-      loggedInTeam.team_number !== null && loggedInTeam.team_number !== undefined
-        ? `Team ${loggedInTeam.team_number}`
-        : ''
+    const primaryTeamName = loggedInTeam.theme || 'Team'
 
     return (
       <section className="team-panel-wrap">
@@ -106,9 +100,8 @@ export default function TeamLogin({
             </span>
           ) : null}
           <div>
-            <p className="team-panel-eyebrow">Logged In Team</p>
+            <p className="team-panel-eyebrow">Logged In</p>
             <h2 className="team-panel-title">{primaryTeamName}</h2>
-            {secondaryTeamMeta ? <p className="team-panel-subtitle">{secondaryTeamMeta}</p> : null}
           </div>
 
           {loggedInTeam.members?.length ? (
@@ -208,16 +201,3 @@ export default function TeamLogin({
 }
 
 export const TEAM_LOGIN_STORAGE_KEY = STORAGE_KEY
-
-function getPrimaryTeamName(team) {
-  if (team.theme) return team.theme
-  if (team.name) {
-    return team.name
-  }
-
-  if (team.team_number !== null && team.team_number !== undefined) {
-    return `Team ${team.team_number}`
-  }
-
-  return 'Team'
-}

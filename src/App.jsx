@@ -87,7 +87,7 @@ export default function App() {
       { data: playerStatsData, error: playerStatsError },
     ] = await Promise.all([
       supabase.from('holes').select('*').order('hole_number', { ascending: true }),
-      supabase.from('teams').select('*').order('team_number', { ascending: true }),
+      supabase.from('teams').select('*').order('id', { ascending: true }),
       supabase.from('players').select('*').order('rank', { ascending: true }),
       supabase.from('scores').select('*'),
       supabase.from('keg_stand_entries').select('*'),

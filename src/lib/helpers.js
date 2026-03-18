@@ -296,7 +296,7 @@ export function getHoleTypeLabel(holeType) {
 export function getHoleDisplayLabel(hole, holeType = getEffectiveHoleType(hole)) {
   if (holeType === 'standard') {
     if (hole?.has_guinness && !hole?.has_bunker && !hole?.has_water) {
-      return 'Guinness Hole'
+      return 'Split the G'
     }
 
     if (hole?.has_bunker && hole?.has_water) {
@@ -363,7 +363,6 @@ export function formatSeconds(value) {
  *     rank,
  *     teamId,
  *     teamName,
- *     teamNumber,
  *     theme,
  *     totalScore,
  *     holesCompleted,
@@ -447,6 +446,7 @@ export function buildOverallLeaderboardData({
           score,
           details: {
             finished_at: teamRankRow?.finished_at ?? null,
+            rank: teamRankRow?.rankScore ?? null,
           },
         }
       }
@@ -487,8 +487,7 @@ export function buildOverallLeaderboardData({
 
     return {
       teamId: team.id,
-      teamName: team.name,
-      teamNumber: team.team_number,
+      teamName: team.theme || 'Team',
       theme: team.theme,
       members: Array.isArray(team.members) ? team.members : [],
       totalScore,
@@ -502,21 +501,17 @@ export function buildOverallLeaderboardData({
     if (a.hasStarted !== b.hasStarted) return a.hasStarted ? -1 : 1
 
     if (!a.hasStarted && !b.hasStarted) {
-      const aNum = toNumber(a.teamNumber, Number.MAX_SAFE_INTEGER)
-      const bNum = toNumber(b.teamNumber, Number.MAX_SAFE_INTEGER)
-      if (aNum !== bNum) return aNum - bNum
-
-      return a.teamName.localeCompare(b.teamName)
+      const nameCmp = (a.teamName || '').localeCompare(b.teamName || '')
+      if (nameCmp !== 0) return nameCmp
+      return (a.teamId || '').localeCompare(b.teamId || '')
     }
 
     if (a.holesCompleted !== b.holesCompleted) return b.holesCompleted - a.holesCompleted
     if (a.totalScore !== b.totalScore) return a.totalScore - b.totalScore
 
-    const aNum = toNumber(a.teamNumber, Number.MAX_SAFE_INTEGER)
-    const bNum = toNumber(b.teamNumber, Number.MAX_SAFE_INTEGER)
-    if (aNum !== bNum) return aNum - bNum
-
-    return a.teamName.localeCompare(b.teamName)
+    const nameCmp = (a.teamName || '').localeCompare(b.teamName || '')
+    if (nameCmp !== 0) return nameCmp
+    return (a.teamId || '').localeCompare(b.teamId || '')
   })
 
   let lastScore = null

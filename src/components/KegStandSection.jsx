@@ -136,7 +136,7 @@ export default function KegStandSection({
       return {
         ...entry,
         teamLabel: entryTeam
-          ? `Team ${entryTeam.team_number}: ${entryTeam.theme || entryTeam.name}`
+          ? (entryTeam.theme || 'Team')
           : 'Unknown team',
         playerName: player?.name ?? '—',
       }
@@ -158,7 +158,7 @@ export default function KegStandSection({
       return {
         ...row,
         teamLabel: t
-          ? `Team ${t.team_number}: ${t.theme || t.name}`
+          ? (t.theme || 'Team')
           : 'Unknown team',
       }
     })

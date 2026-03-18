@@ -20,8 +20,7 @@ export default function PlayersView({ players = [], teams = [], playerStats = []
         const team = player.team_id != null ? teamById.get(player.team_id) : null
         return {
           ...player,
-          teamName:
-            team?.theme || team?.name || (team ? `Team ${team.team_number ?? '?'}` : '—'),
+          teamName: team?.theme || '—',
           teamEmoji: team?.emoji ?? '',
           stats: statsByPlayerId.get(player.id) ?? null,
         }

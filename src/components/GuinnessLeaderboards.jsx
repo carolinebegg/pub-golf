@@ -18,7 +18,7 @@ function buildLeaderboardByPlayerId(votes = [], players = [], teams = [], fieldP
       playerId: pid,
       memberName: player?.name ?? '—',
       teamId: teamId ?? null,
-      teamName: teamId ? (teamById.get(teamId)?.theme || teamById.get(teamId)?.name || null) : null,
+      teamName: teamId ? (teamById.get(teamId)?.theme || null) : null,
       votes: 0,
     }
     current.votes += 1
@@ -48,8 +48,8 @@ export default function GuinnessLeaderboards({ votes = [], teams = [], players =
   return (
     <section style={styles.section}>
       <div style={styles.headerRow}>
-        <h2 style={styles.title}>Guinness Split Awards</h2>
-        <div style={styles.subtitle}>Votes from Guinness holes</div>
+        <h2 style={styles.title}>Split the G Awards</h2>
+        <div style={styles.subtitle}>Votes from Split the G holes</div>
       </div>
 
       <HoleLeaderboard

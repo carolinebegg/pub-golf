@@ -238,7 +238,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
         playerId: pid,
         memberName: player?.name ?? '—',
         teamId: teamId ?? null,
-        teamName: teamId ? (teamById.get(teamId)?.theme || teamById.get(teamId)?.name || null) : null,
+        teamName: teamId ? (teamById.get(teamId)?.theme || null) : null,
         votes: 0,
       }
       current.votes += 1
@@ -260,7 +260,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
         playerId: p.id,
         playerName: p.name,
         teamId: p.team_id,
-        teamLabel: teamById.get(p.team_id)?.theme || teamById.get(p.team_id)?.name || 'Team',
+        teamLabel: teamById.get(p.team_id)?.theme || 'Team',
       }))
   }, [players, votingTeam.id, teamById])
 

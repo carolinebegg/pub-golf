@@ -28,18 +28,5 @@ export default function TeamSelector({
 }
 
 function formatTeamLabel(team) {
-  const teamNumberPart =
-    team.team_number !== null && team.team_number !== undefined
-      ? `Team ${team.team_number}`
-      : 'Team'
-
-  if (team.theme) {
-    return `${teamNumberPart} (${team.theme})`
-  }
-
-  if (team.name) {
-    return `${teamNumberPart} — ${team.name}`
-  }
-
-  return teamNumberPart
+  return team.theme || 'Team'
 }
