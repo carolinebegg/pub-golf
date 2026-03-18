@@ -38,6 +38,7 @@ export default function App() {
   const [pitcherFinishes, setPitcherFinishes] = useState([])
   const [guinnessVotes, setGuinnessVotes] = useState([])
   const [bunkerHazardEntries, setBunkerHazardEntries] = useState([])
+  const [playerStats, setPlayerStats] = useState([])
 
   const [loggedInTeam, setLoggedInTeam] = useState(() => {
     try {
@@ -83,6 +84,7 @@ export default function App() {
       { data: pitcherData, error: pitcherError },
       { data: guinnessData, error: guinnessError },
       { data: bunkerData, error: bunkerError },
+      { data: playerStatsData, error: playerStatsError },
     ] = await Promise.all([
       supabase.from('holes').select('*').order('hole_number', { ascending: true }),
       supabase.from('teams').select('*').order('team_number', { ascending: true }),
@@ -92,6 +94,7 @@ export default function App() {
       supabase.from('pitcher_finishes').select('*'),
       supabase.from('guinness_split_votes').select('*'),
       supabase.from('bunker_hazard_entries').select('*'),
+      supabase.from('player_stats').select('*'),
     ])
 
     const firstError =
@@ -103,6 +106,12 @@ export default function App() {
       pitcherError ||
       guinnessError ||
       bunkerError
+    // player_stats is optional (e.g. view not yet populated)
+    if (playerStatsError) {
+      setPlayerStats([])
+    } else {
+      setPlayerStats(playerStatsData || [])
+    }
 
     if (firstError) {
       setError(firstError.message || 'Failed to load data')
@@ -477,7 +486,7 @@ export default function App() {
                 />
               )}
               {activeView === 'players' && (
-                <PlayersView players={players} teams={teams} />
+                <PlayersView players={players} teams={teams} playerStats={playerStats} />
               )}
             </>
           )}

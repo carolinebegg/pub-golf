@@ -1,10 +1,15 @@
 import { useMemo } from 'react'
 import PlayerCard, { sortPlayersByRank } from './PlayerCard'
 
-export default function PlayersView({ players = [], teams = [] }) {
+export default function PlayersView({ players = [], teams = [], playerStats = [] }) {
   const teamById = useMemo(
     () => new Map(teams.map((t) => [t.id, t])),
     [teams]
+  )
+
+  const statsByPlayerId = useMemo(
+    () => new Map((playerStats || []).map((row) => [row.player_id, row])),
+    [playerStats]
   )
 
   const sortedPlayers = useMemo(() => sortPlayersByRank(players), [players])
@@ -18,9 +23,10 @@ export default function PlayersView({ players = [], teams = [] }) {
           teamName:
             team?.theme || team?.name || (team ? `Team ${team.team_number ?? '?'}` : '—'),
           teamEmoji: team?.emoji ?? '',
+          stats: statsByPlayerId.get(player.id) ?? null,
         }
       }),
-    [sortedPlayers, teamById]
+    [sortedPlayers, teamById, statsByPlayerId]
   )
 
   return (
@@ -35,6 +41,7 @@ export default function PlayersView({ players = [], teams = [] }) {
             player={player}
             teamName={player.teamName}
             teamEmoji={player.teamEmoji}
+            stats={player.stats}
           />
         ))}
       </div>

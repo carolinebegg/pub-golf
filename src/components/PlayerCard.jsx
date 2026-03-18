@@ -1,6 +1,20 @@
 import { useEffect, useState } from 'react'
+import { formatSeconds } from '../lib/helpers'
 
 const RANK_ORDER = ['S', 'A', 'B', 'C', 'D', 'E', 'F']
+
+/**
+ * Expected shape when wired to public.player_stats (backend).
+ * Uses keg_stand_length_seconds (numeric 6,2).
+ */
+function formatStatValue(key, value) {
+  if (value == null || value === '') return '—'
+  if (key === 'keg_stand_length_seconds') {
+    const n = Number(value)
+    return Number.isFinite(n) ? formatSeconds(n) : '—'
+  }
+  return String(value)
+}
 
 function rankSortIndex(rank) {
   const r = String(rank ?? '').toUpperCase().trim()
@@ -14,10 +28,22 @@ export function sortPlayersByRank(players) {
   )
 }
 
-export default function PlayerCard({ player, teamName = '', teamEmoji = '' }) {
+export default function PlayerCard({
+  player,
+  teamName = '',
+  teamEmoji = '',
+  stats = null,
+}) {
   const [flipped, setFlipped] = useState(false)
 
   const displayRank = player.rank != null && player.rank !== '' ? String(player.rank) : '—'
+
+  const totalDrinks = stats ? formatStatValue('total_drinks', stats.total_drinks) : '—'
+  const bunkerHazards = stats ? formatStatValue('bunker_hazards', stats.bunker_hazards) : '—'
+  const averageSips = stats ? formatStatValue('average_sips', stats.average_sips) : '—'
+  const kegStandLength = stats ? formatStatValue('keg_stand_length_seconds', stats.keg_stand_length_seconds) : '—'
+  const holesCompleted = stats ? formatStatValue('holes_completed', stats.holes_completed) : '—'
+  const awards = stats?.awards != null && stats.awards !== '' ? String(stats.awards) : '—'
 
   function openBack() {
     setFlipped(true)
@@ -86,26 +112,32 @@ export default function PlayerCard({ player, teamName = '', teamEmoji = '' }) {
             <dl className="player-card-stats">
               <div className="player-card-stat">
                 <dt>Total drinks</dt>
-                <dd>—</dd>
+                <dd>{totalDrinks}</dd>
+              </div>
+              <div className="player-card-stat">
+                <dt>Bunker hazards</dt>
+                <dd>{bunkerHazards}</dd>
               </div>
               <div className="player-card-stat">
                 <dt>Average sips</dt>
-                <dd>—</dd>
+                <dd>{averageSips}</dd>
               </div>
               <div className="player-card-stat">
                 <dt>Keg stand length</dt>
-                <dd>—</dd>
+                <dd>{kegStandLength}</dd>
               </div>
               <div className="player-card-stat">
                 <dt>Holes completed</dt>
-                <dd>—</dd>
+                <dd>{holesCompleted}</dd>
               </div>
               <div className="player-card-stat">
                 <dt>Awards</dt>
-                <dd>—</dd>
+                <dd>{awards}</dd>
               </div>
             </dl>
-            <p className="player-card-stats-note">Stats and awards will appear here once the backend is connected.</p>
+            {!stats && (
+              <p className="player-card-stats-note">Stats and awards will appear here once the backend is connected.</p>
+            )}
           </div>
         </div>
       ) : null}
