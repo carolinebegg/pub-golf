@@ -9,17 +9,17 @@ export default function PlayersView({ players = [], teams = [] }) {
 
   const sortedPlayers = useMemo(() => sortPlayersByRank(players), [players])
 
-  const playerWithTeamName = useMemo(
+  const playerWithTeam = useMemo(
     () =>
-      sortedPlayers.map((player) => ({
-        ...player,
-        teamName:
-          player.team_id != null
-            ? teamById.get(player.team_id)?.theme ||
-              teamById.get(player.team_id)?.name ||
-              `Team ${teamById.get(player.team_id)?.team_number ?? '?'}`
-            : '—',
-      })),
+      sortedPlayers.map((player) => {
+        const team = player.team_id != null ? teamById.get(player.team_id) : null
+        return {
+          ...player,
+          teamName:
+            team?.theme || team?.name || (team ? `Team ${team.team_number ?? '?'}` : '—'),
+          teamEmoji: team?.emoji ?? '',
+        }
+      }),
     [sortedPlayers, teamById]
   )
 
@@ -29,15 +29,16 @@ export default function PlayersView({ players = [], teams = [] }) {
         <h2>Players</h2>
       </div>
       <div className="players-grid">
-        {playerWithTeamName.map((player) => (
+        {playerWithTeam.map((player) => (
           <PlayerCard
             key={player.id}
             player={player}
             teamName={player.teamName}
+            teamEmoji={player.teamEmoji}
           />
         ))}
       </div>
-      {playerWithTeamName.length === 0 ? (
+      {playerWithTeam.length === 0 ? (
         <div className="app-card">No players yet.</div>
       ) : null}
     </section>

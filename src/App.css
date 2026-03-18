@@ -398,6 +398,12 @@ p {
   color: var(--text-secondary);
 }
 
+.player-card-team .player-card-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+  display: inline-block;
+}
+
 .player-card-overlay {
   position: fixed;
   inset: 0;

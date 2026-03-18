@@ -14,7 +14,7 @@ export function sortPlayersByRank(players) {
   )
 }
 
-export default function PlayerCard({ player, teamName = '' }) {
+export default function PlayerCard({ player, teamName = '', teamEmoji = '' }) {
   const [flipped, setFlipped] = useState(false)
 
   const displayRank = player.rank != null && player.rank !== '' ? String(player.rank) : '—'
@@ -48,7 +48,15 @@ export default function PlayerCard({ player, teamName = '' }) {
           <div className="player-card-front">
             <div className="player-card-rank">{displayRank}</div>
             <div className="player-card-name">{player.name || '—'}</div>
-            <div className="player-card-team">{teamName || '—'}</div>
+            <div className="player-card-team">
+              {teamEmoji ? (
+                <span className="player-card-emoji" aria-label={teamName || undefined}>
+                  {teamEmoji}
+                </span>
+              ) : (
+                teamName || '—'
+              )}
+            </div>
           </div>
         </div>
       </button>
