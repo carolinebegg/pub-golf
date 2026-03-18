@@ -171,6 +171,7 @@ export function buildKegStandTeamLeaderboard(entries = []) {
 
 /**
  * Individual keg entries sorted longest-first with competition rankScore (ties share rank).
+ * Expects entries with resolved playerName (from players table) for tie-break.
  */
 export function rankKegStandIndividualEntries(entries = []) {
   const valid = entries.filter((e) => kegComparableSeconds(e?.seconds) !== null)
@@ -178,7 +179,7 @@ export function rankKegStandIndividualEntries(entries = []) {
     const nb = kegComparableSeconds(b.seconds)
     const na = kegComparableSeconds(a.seconds)
     if (nb !== na) return nb - na
-    return String(a.member_name || '').localeCompare(String(b.member_name || ''))
+    return String(a.playerName || '').localeCompare(String(b.playerName || ''))
   })
   return assignRankScores(sorted, (row) => kegComparableSeconds(row.seconds))
 }
@@ -376,6 +377,7 @@ export function buildOverallLeaderboardData({
   scores = [],
   kegStandEntries = [],
   pitcherFinishes = [],
+  bunkerHazardEntries = [],
 }) {
   const sortedHoles = sortHolesByNumber(holes)
 
@@ -450,13 +452,26 @@ export function buildOverallLeaderboardData({
       }
 
       const scoreRow = getScoreForTeamAndHole(scores, team.id, hole.id)
-      const isBunkerHazardOnly = scoreRow?.is_bunker_hazard
-      const score = isBunkerHazardOnly ? null : calculateStandardHoleScore(scoreRow)
+      let score = calculateStandardHoleScore(scoreRow)
+      if (score !== null && hole.has_bunker) {
+        const hasBunkerEntry = bunkerHazardEntries.some(
+          (b) => b.hole_id === hole.id && b.team_id === team.id
+        )
+        if (!hasBunkerEntry) {
+          score += 3
+        }
+      }
 
       if (score !== null) {
         totalScore += score
         holesCompleted += 1
       }
+
+      const bunkerEntry = hole.has_bunker
+        ? bunkerHazardEntries.find(
+            (b) => b.hole_id === hole.id && b.team_id === team.id
+          ) ?? null
+        : null
 
       return {
         holeId: hole.id,
@@ -466,6 +481,7 @@ export function buildOverallLeaderboardData({
         displayTypeLabel: getHoleDisplayLabel(hole, holeType),
         score,
         details: scoreRow,
+        bunkerEntry,
       }
     })
 

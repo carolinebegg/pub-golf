@@ -6,6 +6,7 @@ export default function HolesView({
   holeStatusById = {},
   onOpenHoleDetails,
   selectedTeam = null,
+  players = [],
 }) {
   return (
     <section className="section-stack">
@@ -19,6 +20,7 @@ export default function HolesView({
             existingScore: null,
             kegEntries: [],
             pitcherFinish: null,
+            bunkerEntry: null,
           }
 
           return (
@@ -31,6 +33,8 @@ export default function HolesView({
               kegEntries={holeState.kegEntries}
               pitcherFinish={holeState.pitcherFinish}
               holeStatus={holeStatusById[hole.id] || 'not-started'}
+              bunkerEntry={holeState.bunkerEntry ?? null}
+              players={players}
             />
           )
         })}

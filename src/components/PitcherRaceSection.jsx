@@ -72,13 +72,13 @@ export default function PitcherRaceSection({
       team_id: team.id,
       finished_at: finishedAt,
     })
-    setShowResults(true)
-
-    setSaving(false)
 
     if (onChanged) {
       await onChanged()
     }
+
+    setShowResults(true)
+    setSaving(false)
   }
 
   async function resetFinish() {
@@ -100,13 +100,13 @@ export default function PitcherRaceSection({
     }
 
     setMyFinish(null)
-    setShowResults(false)
-
-    setSaving(false)
 
     if (onChanged) {
       await onChanged()
     }
+
+    setShowResults(false)
+    setSaving(false)
   }
 
   async function toggleResults() {

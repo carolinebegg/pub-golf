@@ -58,6 +58,7 @@ export default function TeamLogin({
       name: selectedTeam.name,
       team_number: selectedTeam.team_number,
       theme: selectedTeam.theme,
+      emoji: selectedTeam.emoji,
       members: selectedTeam.members || [],
       join_code: selectedTeam.join_code,
     }
@@ -99,6 +100,11 @@ export default function TeamLogin({
     return (
       <section className="team-panel-wrap">
         <div className="team-panel-card">
+          {loggedInTeam.emoji ? (
+            <span className="team-panel-emoji" aria-hidden="true">
+              {loggedInTeam.emoji}
+            </span>
+          ) : null}
           <div>
             <p className="team-panel-eyebrow">Logged In Team</p>
             <h2 className="team-panel-title">{primaryTeamName}</h2>

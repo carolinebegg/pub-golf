@@ -15,6 +15,8 @@ export default function HoleCard({
   kegEntries = [],
   pitcherFinish = null,
   holeStatus = 'not-started',
+  bunkerEntry = null,
+  players = [],
 }) {
   const holeType = getEffectiveHoleType(hole)
 
@@ -33,8 +35,12 @@ export default function HoleCard({
       ? calculateTeamAverageKegSeconds(teamEntries)
       : null
 
-  const hasBunkerHazardShot =
-    selectedTeam && hole?.has_bunker && existingScore?.is_bunker_hazard
+  const hasBunkerHazardShot = selectedTeam && hole?.has_bunker && bunkerEntry != null
+  const bunkerPlayerName =
+    bunkerEntry?.player_id != null
+      ? players.find((p) => p.id === bunkerEntry.player_id)?.name ?? null
+      : null
+  const bunkerShotName = bunkerEntry?.shot_name ?? null
 
   const typeDisplay = getHoleTypeDisplay({ hole, holeType })
   const statusDisplay = getStatusDisplay(holeStatus)
@@ -74,7 +80,7 @@ export default function HoleCard({
             </span>
 
             {selectedTeam && holeType === 'standard' && existingScore ? (
-              <span style={styles.scoreBadge}>Score {standardPreviewScore}</span>
+              <span style={styles.scoreBadge}>Score: {standardPreviewScore}</span>
             ) : null}
 
             {selectedTeam && holeType === 'keg_stand' && kegAverage !== null ? (
@@ -87,8 +93,7 @@ export default function HoleCard({
 
             {hasBunkerHazardShot ? (
               <span style={styles.bunkerBadge}>
-                Bunker hazard:{' '}
-                {existingScore.drinker_name || existingScore.drink_name || 'Recorded'}
+                Bunker Hazard: {bunkerPlayerName || 'Someone'}{bunkerShotName ? ` (${bunkerShotName})` : ''}
               </span>
             ) : null}
           </div>
