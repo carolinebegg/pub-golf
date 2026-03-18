@@ -273,7 +273,6 @@ export default function StandardHoleForm({
       }
     }
 
-    setMessage(existingScore ? 'Score updated.' : 'Score saved.')
     setSaving(false)
 
     if (onChanged) {
@@ -283,9 +282,6 @@ export default function StandardHoleForm({
 
   async function handleDelete() {
     if (!existingScore?.id) return
-
-    const confirmed = window.confirm('Delete this score?')
-    if (!confirmed) return
 
     setDeleting(true)
     setMessage('')
@@ -303,7 +299,6 @@ export default function StandardHoleForm({
     }
 
     setForm(getInitialFormState(null))
-    setMessage('Score deleted.')
     setDeleting(false)
 
     if (onChanged) {
