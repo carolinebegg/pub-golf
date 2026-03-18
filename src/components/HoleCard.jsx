@@ -1,8 +1,5 @@
 import {
-  calculateStandardHoleScore,
-  calculateTeamAverageKegSeconds,
   formatHoleTimeRange,
-  formatSeconds,
   getHoleDisplayLabel,
   getEffectiveHoleType,
 } from '../lib/helpers'
@@ -20,31 +17,7 @@ export default function HoleCard({
   scoreForHole = null,
 }) {
   const holeType = getEffectiveHoleType(hole)
-
-  const teamEntries =
-    selectedTeam && holeType === 'keg_stand'
-      ? kegEntries
-      : []
-
-  const standardPreviewScore =
-    selectedTeam && holeType === 'standard'
-      ? calculateStandardHoleScore(existingScore)
-      : null
-
-  const kegAverage =
-    selectedTeam && holeType === 'keg_stand'
-      ? calculateTeamAverageKegSeconds(teamEntries)
-      : null
-
-  const hasBunkerHazardShot = selectedTeam && hole?.has_bunker && bunkerEntry != null
-  const bunkerPlayerName =
-    bunkerEntry?.player_id != null
-      ? players.find((p) => p.id === bunkerEntry.player_id)?.name ?? null
-      : null
-  const bunkerShotName = bunkerEntry?.shot_name ?? null
-
   const typeDisplay = getHoleTypeDisplay({ hole, holeType })
-  const statusDisplay = getStatusDisplay(holeStatus)
 
   return (
     <div style={styles.card}>
@@ -69,35 +42,6 @@ export default function HoleCard({
 
         <div style={styles.metaRow}>
           <div style={styles.time}>{formatHoleTimeRange(hole)}</div>
-
-          <div style={styles.statusBlock}>
-            <span
-              style={{
-                ...styles.statusBadge,
-                ...statusDisplay.style,
-              }}
-            >
-              {statusDisplay.label}
-            </span>
-
-            {selectedTeam && holeType === 'standard' && existingScore ? (
-              <span style={styles.scoreBadge}>Score: {standardPreviewScore}</span>
-            ) : null}
-
-            {selectedTeam && holeType === 'keg_stand' && kegAverage !== null ? (
-              <span style={styles.scoreBadge}>Avg {formatSeconds(kegAverage)}</span>
-            ) : null}
-
-            {selectedTeam && holeType === 'pitcher' && pitcherFinish ? (
-              <span style={styles.scoreBadge}>Finish recorded</span>
-            ) : null}
-
-            {hasBunkerHazardShot ? (
-              <span style={styles.bunkerBadge}>
-                Bunker Hazard: {bunkerPlayerName || 'Someone'}{bunkerShotName ? ` (${bunkerShotName})` : ''}
-              </span>
-            ) : null}
-          </div>
         </div>
 
         <div style={styles.bottomRow}>
@@ -197,27 +141,6 @@ function getHoleTypeDisplay({ hole, holeType }) {
   }
 }
 
-function getStatusDisplay(status) {
-  switch (status) {
-    case 'completed':
-      return {
-        label: 'Completed',
-        style: styles.statusBadgeComplete,
-      }
-    case 'in-progress':
-      return {
-        label: 'In progress',
-        style: styles.statusBadgeInProgress,
-      }
-    case 'not-started':
-    default:
-      return {
-        label: 'Not started',
-        style: styles.statusBadgeNotStarted,
-      }
-  }
-}
-
 const styles = {
   card: {
     background: 'var(--surface)',
@@ -278,52 +201,6 @@ const styles = {
     fontSize: '0.87rem',
     color: '#5a6b62',
     whiteSpace: 'nowrap',
-  },
-  statusBlock: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  statusBadge: {
-    border: '1px solid',
-    color: '#335246',
-    padding: '5px 9px',
-    borderRadius: 999,
-    fontSize: '0.78rem',
-    fontWeight: 700,
-  },
-  statusBadgeComplete: {
-    background: '#eaf5ee',
-    borderColor: '#cce0d0',
-    color: '#1f5a3a',
-  },
-  statusBadgeInProgress: {
-    background: '#edf2ff',
-    borderColor: '#c9d6f7',
-    color: '#284f92',
-  },
-  statusBadgeNotStarted: {
-    background: '#f6f7f6',
-    borderColor: '#d9ddda',
-    color: '#5f6e65',
-  },
-  scoreBadge: {
-    background: '#f4f8f4',
-    padding: '5px 9px',
-    borderRadius: 999,
-    fontSize: '0.8rem',
-    fontWeight: 700,
-    border: '1px solid #d6dfd7',
-  },
-  bunkerBadge: {
-    background: '#fff7eb',
-    padding: '5px 9px',
-    borderRadius: 999,
-    fontSize: '0.8rem',
-    fontWeight: 700,
-    border: '1px solid #f0d8a8',
-    color: '#6f5720',
   },
   bottomRow: {
     display: 'flex',
