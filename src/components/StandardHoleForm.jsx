@@ -64,6 +64,7 @@ function getInitialFormState(existingScore) {
     drinkName: existingScore?.drink_name ?? '',
     sips: existingScore?.sips ?? '',
     isGuinness: existingScore?.is_guinness ?? false,
+    drinkerId: existingScore?.player_id != null ? String(existingScore.player_id) : '',
     paidBy: existingScore?.paid_by_player_id != null ? String(existingScore.paid_by_player_id) : '',
     price: existingScore?.price ?? '',
     bunkerCompleted: false,
@@ -115,8 +116,9 @@ export default function StandardHoleForm({
   const [deleting, setDeleting] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({ sips: false, bunkerPlayer: false, bunkerShot: false })
+  const [fieldErrors, setFieldErrors] = useState({ sips: false, drinker: false, bunkerPlayer: false, bunkerShot: false })
   const sipsInputRef = useRef(null)
+  const drinkerRef = useRef(null)
   const bunkerPlayerRef = useRef(null)
   const bunkerShotRef = useRef(null)
   const [showAdjustments, setShowAdjustments] = useState(
@@ -159,6 +161,7 @@ export default function StandardHoleForm({
     setFieldErrors((prev) => {
       const next = { ...prev }
       if (key === 'sips') next.sips = false
+      if (key === 'drinkerId') next.drinker = false
       if (key === 'bunkerPlayerId') next.bunkerPlayer = false
       if (key === 'bunkerShotName') next.bunkerShot = false
       return next
@@ -166,13 +169,15 @@ export default function StandardHoleForm({
   }
 
   useEffect(() => {
-    const hasAny = fieldErrors.sips || fieldErrors.bunkerPlayer || fieldErrors.bunkerShot
+    const hasAny = fieldErrors.sips || fieldErrors.drinker || fieldErrors.bunkerPlayer || fieldErrors.bunkerShot
     if (!hasAny) return
     const ref = fieldErrors.sips
       ? sipsInputRef
-      : fieldErrors.bunkerPlayer
-        ? bunkerPlayerRef
-        : bunkerShotRef
+      : fieldErrors.drinker
+        ? drinkerRef
+        : fieldErrors.bunkerPlayer
+          ? bunkerPlayerRef
+          : bunkerShotRef
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [fieldErrors])
 
@@ -184,7 +189,7 @@ export default function StandardHoleForm({
       return
     }
 
-    setFieldErrors({ sips: false, bunkerPlayer: false, bunkerShot: false })
+    setFieldErrors({ sips: false, drinker: false, bunkerPlayer: false, bunkerShot: false })
 
     const sipsTrimmed = String(form.sips ?? '').trim()
     const sipsInvalid = sipsTrimmed === '' || !Number.isFinite(Number(form.sips)) || Number(form.sips) <= 0
@@ -193,6 +198,11 @@ export default function StandardHoleForm({
       return
     }
     const parsedSips = Number(form.sips)
+
+    if (!form.drinkerId) {
+      setFieldErrors((prev) => ({ ...prev, drinker: true }))
+      return
+    }
 
     if (hole.has_bunker && form.bunkerCompleted) {
       const missingPlayer = !form.bunkerPlayerId
@@ -210,7 +220,7 @@ export default function StandardHoleForm({
     setSaving(true)
     setMessage('')
     setError('')
-    setFieldErrors({ sips: false, bunkerPlayer: false, bunkerShot: false })
+    setFieldErrors({ sips: false, drinker: false, bunkerPlayer: false, bunkerShot: false })
 
     const notesWithAdjustmentTokens = composeNotesWithAdjustmentTokens(form.notes, form)
 
@@ -220,6 +230,7 @@ export default function StandardHoleForm({
       drink_name: form.drinkName.trim() || null,
       sips: parsedSips,
       is_guinness: Boolean(form.isGuinness),
+      player_id: form.drinkerId || null,
       paid_by_player_id: form.paidBy || null,
       price: form.price === '' ? null : Number(form.price),
       water_violated: Boolean(form.waterViolated),
@@ -347,6 +358,29 @@ export default function StandardHoleForm({
               style={fieldErrors.sips ? { ...styles.input, ...styles.inputError } : styles.input}
               placeholder="1"
             />
+          </label>
+
+          <label style={styles.field}>
+            <span style={styles.label}>
+              Drinker
+              {fieldErrors.drinker ? (
+                <span style={styles.requiredError}> *</span>
+              ) : null}
+              <em style={styles.requiredTag}>(required)</em>
+            </span>
+            <select
+              ref={drinkerRef}
+              value={form.drinkerId}
+              onChange={(e) => updateField('drinkerId', e.target.value)}
+              style={fieldErrors.drinker ? { ...styles.input, ...styles.inputError } : styles.input}
+            >
+              <option value="">Select player</option>
+              {playersForTeam.map((player) => (
+                <option key={player.id} value={player.id}>
+                  {player.name}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label style={styles.field}>
