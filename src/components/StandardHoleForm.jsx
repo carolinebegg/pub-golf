@@ -347,7 +347,7 @@ export default function StandardHoleForm({
               {fieldErrors.sips ? (
                 <span style={styles.requiredError}> *</span>
               ) : null}
-              <em style={styles.requiredTag}>(required)</em>
+              <em style={styles.requiredTag}> (required)</em>
             </span>
             <input
               ref={sipsInputRef}
@@ -366,7 +366,7 @@ export default function StandardHoleForm({
               {fieldErrors.drinker ? (
                 <span style={styles.requiredError}> *</span>
               ) : null}
-              <em style={styles.requiredTag}>(required)</em>
+              <em style={styles.requiredTag}> (required)</em>
             </span>
             <select
               ref={drinkerRef}
