@@ -22,7 +22,6 @@ export default function KegStandSection({
   const [deletingId, setDeletingId] = useState(null)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -39,7 +38,6 @@ export default function KegStandSection({
 
     setSaving(true)
     setError('')
-    setMessage('')
 
     const payload = {
       hole_id: hole.id,
@@ -68,7 +66,7 @@ export default function KegStandSection({
     setMemberName('')
     setSeconds('')
     setEditingEntryId(null)
-    setMessage(editingEntryId ? 'Keg stand updated.' : 'Keg stand added.')
+    setShowLeaderboard(true)
 
     setSaving(false)
 
@@ -81,7 +79,6 @@ export default function KegStandSection({
     setEditingEntryId(entry.id)
     setMemberName(entry.member_name)
     setSeconds(String(entry.seconds))
-    setMessage('')
     setError('')
   }
 
@@ -89,17 +86,12 @@ export default function KegStandSection({
     setEditingEntryId(null)
     setMemberName('')
     setSeconds('')
-    setMessage('')
     setError('')
   }
 
   async function handleDelete(entryId) {
-    const confirmed = window.confirm('Delete this keg stand entry?')
-    if (!confirmed) return
-
     setDeletingId(entryId)
     setError('')
-    setMessage('')
 
     const { error: deleteError } = await supabase
       .from('keg_stand_entries')
@@ -116,7 +108,7 @@ export default function KegStandSection({
       cancelEdit()
     }
 
-    setMessage('Keg stand entry deleted.')
+    setShowLeaderboard(true)
     setDeletingId(null)
 
     if (onChanged) {
@@ -284,7 +276,6 @@ export default function KegStandSection({
         />
       )}
 
-      {message ? <p style={styles.success}>{message}</p> : null}
       {error ? <p style={styles.error}>{error}</p> : null}
     </div>
   )
@@ -399,10 +390,6 @@ const styles = {
     fontWeight: 800,
     fontSize: '0.95rem',
     cursor: 'pointer',
-  },
-  success: {
-    color: '#17663a',
-    margin: 0,
   },
   error: {
     color: '#a12626',

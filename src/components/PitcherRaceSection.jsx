@@ -20,11 +20,17 @@ export default function PitcherRaceSection({
   const canViewLeaderboard = Boolean(myFinish)
 
   useEffect(() => {
-    setMyFinish(pitcherFinish || null)
     setShowResults(false)
     setLoading(false)
     setError('')
-  }, [hole?.id, team?.id, pitcherFinish])
+  }, [hole?.id, team?.id])
+
+  useEffect(() => {
+    setMyFinish(pitcherFinish || null)
+    if (!pitcherFinish) {
+      setShowResults(false)
+    }
+  }, [pitcherFinish])
 
   async function markFinished() {
     if (!hole?.id || !team?.id) {
@@ -66,6 +72,7 @@ export default function PitcherRaceSection({
       team_id: team.id,
       finished_at: finishedAt,
     })
+    setShowResults(true)
 
     setSaving(false)
 

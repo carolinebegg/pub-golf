@@ -186,7 +186,6 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
   const [showLeaderboards, setShowLeaderboards] = useState(false)
   const [bestSelection, setBestSelection] = useState(() => {
     if (!existingVote) return ''
@@ -296,7 +295,6 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
-    setMessage('')
 
     if (!bestSelection && !worstSelection) {
       setError('Select at least one vote.')
@@ -336,7 +334,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
     }
 
     setSaving(false)
-    setMessage('Votes saved.')
+    setShowLeaderboards(true)
 
     if (onChanged) {
       await onChanged()
@@ -348,7 +346,6 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
 
     setSaving(true)
     setError('')
-    setMessage('')
 
     const { error: deleteError } = await supabase
       .from('guinness_split_votes')
@@ -365,7 +362,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, votes = [], onChanged 
     setBestSelection('')
     setWorstSelection('')
     setSaving(false)
-    setMessage('Votes removed. You can vote again.')
+    setShowLeaderboards(true)
 
     if (onChanged) {
       await onChanged()
