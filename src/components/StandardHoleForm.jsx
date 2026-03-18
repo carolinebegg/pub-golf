@@ -317,7 +317,7 @@ export default function StandardHoleForm({
               value={form.drinkName}
               onChange={(e) => updateField('drinkName', e.target.value)}
               style={styles.input}
-              placeholder="Example: Guinness"
+              placeholder="Ex. Guinness"
             />
           </label>
         </div>
@@ -331,6 +331,49 @@ export default function StandardHoleForm({
           Guinness bonus (-1)
         </label>
       </section>
+
+      {hole.has_bunker ? (
+        <section style={styles.section}>
+          <h5 style={styles.sectionTitle}>Bunker Hazard</h5>
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.bunkerCompleted}
+              onChange={(e) => updateField('bunkerCompleted', e.target.checked)}
+            />
+            Completed bunker
+          </label>
+          {form.bunkerCompleted ? (
+            <div style={styles.inlineGrid}>
+              <label style={styles.field}>
+                <span style={styles.label}>Who completed bunker <em style={styles.requiredTag}>(required)</em></span>
+                <select
+                  value={form.bunkerPlayerId}
+                  onChange={(e) => updateField('bunkerPlayerId', e.target.value)}
+                  style={styles.input}
+                >
+                  <option value="">Select player</option>
+                  {playersForTeam.map((player) => (
+                    <option key={player.id} value={player.id}>
+                      {player.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={styles.field}>
+                <span style={styles.label}>Shot name / drink <em style={styles.requiredTag}>(required)</em></span>
+                <input
+                  type="text"
+                  value={form.bunkerShotName}
+                  onChange={(e) => updateField('bunkerShotName', e.target.value)}
+                  style={styles.input}
+                  placeholder="Ex. Baby Guinness"
+                />
+              </label>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section style={styles.section}>
         <h5 style={styles.sectionTitle}>Details</h5>
@@ -373,48 +416,6 @@ export default function StandardHoleForm({
 
       <section style={styles.section}>
         <h5 style={styles.sectionTitle}>Adjustments</h5>
-
-        {hole.has_bunker ? (
-          <>
-            <label style={styles.checkboxRow}>
-              <input
-                type="checkbox"
-                checked={form.bunkerCompleted}
-                onChange={(e) => updateField('bunkerCompleted', e.target.checked)}
-              />
-              Completed bunker
-            </label>
-            {form.bunkerCompleted ? (
-              <div style={styles.inlineGrid}>
-                <label style={styles.field}>
-                  <span style={styles.label}>Who completed bunker <em style={styles.requiredTag}>(required)</em></span>
-                  <select
-                    value={form.bunkerPlayerId}
-                    onChange={(e) => updateField('bunkerPlayerId', e.target.value)}
-                    style={styles.input}
-                  >
-                    <option value="">Select player</option>
-                    {playersForTeam.map((player) => (
-                      <option key={player.id} value={player.id}>
-                        {player.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={styles.field}>
-                  <span style={styles.label}>Shot name <em style={styles.requiredTag}>(required)</em></span>
-                  <input
-                    type="text"
-                    value={form.bunkerShotName}
-                    onChange={(e) => updateField('bunkerShotName', e.target.value)}
-                    style={styles.input}
-                    placeholder="e.g. House shot"
-                  />
-                </label>
-              </div>
-            ) : null}
-          </>
-        ) : null}
 
         {hole.has_water ? (
           <label style={styles.checkboxRow}>
@@ -536,7 +537,7 @@ export default function StandardHoleForm({
             onChange={(e) => updateField('notes', e.target.value)}
             style={styles.textarea}
             rows={3}
-            placeholder="Anything important about this hole"
+            placeholder="Ex. Great atmosphere, slow service"
           />
         </label>
       </section>
