@@ -80,7 +80,7 @@ export default function HoleCard({
             </span>
 
             {selectedTeam && holeType === 'standard' && existingScore ? (
-              <span style={styles.scoreBadge}>Score {standardPreviewScore}</span>
+              <span style={styles.scoreBadge}>Score: {standardPreviewScore}</span>
             ) : null}
 
             {selectedTeam && holeType === 'keg_stand' && kegAverage !== null ? (
@@ -93,8 +93,7 @@ export default function HoleCard({
 
             {hasBunkerHazardShot ? (
               <span style={styles.bunkerBadge}>
-                Bunker hazard:{' '}
-                {[bunkerPlayerName, bunkerShotName].filter(Boolean).join(' — ') || 'Recorded'}
+                Bunker Hazard: {bunkerPlayerName || 'Someone'}{bunkerShotName ? ` (${bunkerShotName})` : ''}
               </span>
             ) : null}
           </div>

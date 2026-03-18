@@ -171,6 +171,9 @@ export default function App() {
   }
 
   async function refreshData() {
+    await supabase.rpc('refresh_player_stats').then(({ error }) => {
+      if (error) console.warn('refresh_player_stats:', error?.message)
+    })
     await loadAllData(false)
   }
 
