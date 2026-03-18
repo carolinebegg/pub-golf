@@ -814,7 +814,31 @@ p {
   }
 
   .players-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .player-card {
+    padding: 8px 6px;
+    border-radius: 10px;
+  }
+
+  .player-card-rank {
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+  }
+
+  .player-card-name {
+    font-size: 0.7rem;
+    margin-bottom: 2px;
+  }
+
+  .player-card-team {
+    font-size: 0.6rem;
+  }
+
+  .player-card-team .player-card-emoji {
+    font-size: 1rem;
   }
 
   .breakdown-modal-header {
