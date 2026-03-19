@@ -624,7 +624,7 @@ export default function StandardHoleForm({
                   checked={form.tapsterPhotobooth}
                   onChange={(e) => updateField('tapsterPhotobooth', e.target.checked)}
                 />
-                Romantic *shirtless* tapster photobooth flic with a team member (-4)
+                Romantic *shirtless* tapster photobooth flic with someone on another team (-4)
               </label>
             ) : null}
 
