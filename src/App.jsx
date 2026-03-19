@@ -343,11 +343,17 @@ export default function App() {
         : inProgressHole?.bar_name || 'Next hole not started'
       : 'No holes yet'
 
+    const rank =
+      loggedInTeamStanding?.rank != null && Number.isFinite(loggedInTeamStanding.rank)
+        ? loggedInTeamStanding.rank
+        : null
+
     return {
       totalScore:
         loggedInTeamStanding && loggedInTeamStanding.holesCompleted > 0
           ? loggedInTeamStanding.totalScore
           : null,
+      rank,
       currentHoleName,
       completedHoles,
       totalHoles,

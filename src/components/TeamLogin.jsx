@@ -127,6 +127,15 @@ export default function TeamLogin({
             </div>
 
             <div className="team-summary-item">
+              <span className="team-summary-label">Ranking</span>
+              <span className="team-summary-value">
+                {summary?.rank != null && Number.isFinite(summary.rank)
+                  ? `#${summary.rank}`
+                  : '—'}
+              </span>
+            </div>
+
+            <div className="team-summary-item">
               <span className="team-summary-label">Progress</span>
               <span className="team-summary-value">{progressLabel}</span>
             </div>
