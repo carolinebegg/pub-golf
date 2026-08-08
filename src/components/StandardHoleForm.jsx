@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { calculateStandardHoleScore, formatCurrency } from '../lib/helpers'
+import { calculateStandardHoleScore, formatCurrency, toBoolean } from '../lib/helpers'
 
 const SCORE_ADJUSTMENT_TOKENS = {
   teamKaraoke: '[adj:team-karaoke]',
@@ -83,15 +83,15 @@ function getInitialFormState(existingScore) {
   return {
     drinkName: existingScore?.drink_name ?? '',
     sips: existingScore?.sips ?? '',
-    isGuinness: existingScore?.is_guinness ?? false,
+    isGuinness: toBoolean(existingScore?.is_guinness),
     drinkerId: existingScore?.player_id != null ? String(existingScore.player_id) : '',
     paidBy: existingScore?.paid_by_player_id != null ? String(existingScore.paid_by_player_id) : '',
     price: existingScore?.price ?? '',
     bunkerCompleted: false,
-    waterViolated: existingScore?.water_violated ?? false,
-    spilledDrink: existingScore?.spilled_drink ?? false,
-    threwUp: existingScore?.threw_up ?? false,
-    photoboothMissing: existingScore?.photobooth_missing ?? false,
+    waterViolated: toBoolean(existingScore?.water_violated),
+    spilledDrink: toBoolean(existingScore?.spilled_drink),
+    threwUp: toBoolean(existingScore?.threw_up),
+    photoboothMissing: toBoolean(existingScore?.photobooth_missing),
     teamKaraoke: noteState.teamKaraoke,
     fadoBestGSplit: noteState.fadoBestGSplit,
     fadoWorstGSplit: noteState.fadoWorstGSplit,
@@ -249,14 +249,14 @@ export default function StandardHoleForm({
       hole_id: hole.id,
       drink_name: form.drinkName.trim() || null,
       sips: parsedSips,
-      is_guinness: Boolean(form.isGuinness),
+      is_guinness: toBoolean(form.isGuinness),
       player_id: form.drinkerId || null,
       paid_by_player_id: form.paidBy || null,
       price: form.price === '' ? null : Number(form.price),
-      water_violated: Boolean(form.waterViolated),
-      spilled_drink: Boolean(form.spilledDrink),
-      threw_up: Boolean(form.threwUp),
-      photobooth_missing: Boolean(form.photoboothMissing),
+      water_violated: toBoolean(form.waterViolated),
+      spilled_drink: toBoolean(form.spilledDrink),
+      threw_up: toBoolean(form.threwUp),
+      photobooth_missing: toBoolean(form.photoboothMissing),
       split_g_bonus: effectiveSplitGBonus,
       bonus_penalty: effectiveBonusPenalty,
       notes: notesWithAdjustmentTokens || null,

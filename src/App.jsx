@@ -32,6 +32,26 @@ function isHoleComplete(hole, holeState) {
   }
 }
 
+const QUERY_TIMEOUT_MS = 20000
+
+function runQueryWithTimeout(queryPromise, queryName, timeoutMs = QUERY_TIMEOUT_MS) {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`${queryName} query timed out after ${Math.round(timeoutMs / 1000)}s`))
+    }, timeoutMs)
+
+    queryPromise
+      .then((result) => {
+        clearTimeout(timeoutId)
+        resolve(result)
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId)
+        reject(error)
+      })
+  })
+}
+
 export default function App() {
   const [holes, setHoles] = useState([])
   const [teams, setTeams] = useState([])
@@ -78,105 +98,155 @@ export default function App() {
 
     setError('')
 
-    const [
-      { data: holesData, error: holesError },
-      { data: teamsData, error: teamsError },
-      { data: playersData, error: playersError },
-      { data: scoresData, error: scoresError },
-      { data: kegData, error: kegError },
-      { data: pitcherData, error: pitcherError },
-      { data: guinnessData, error: guinnessError },
-      { data: bunkerData, error: bunkerError },
-      { data: playerStatsData, error: playerStatsError },
-    ] = await Promise.all([
-      supabase.from('holes').select('*').order('hole_number', { ascending: true }),
-      supabase.from('teams').select('*').order('id', { ascending: true }),
-      supabase.from('players').select('*').order('rank', { ascending: true }),
-      supabase.from('scores').select('*'),
-      supabase.from('keg_stand_entries').select('*'),
-      supabase.from('pitcher_finishes').select('*'),
-      supabase.from('guinness_split_votes').select('*'),
-      supabase.from('bunker_hazard_entries').select('*'),
-      supabase.from('player_stats').select('*'),
-    ])
+    try {
+      const queries = [
+        {
+          key: 'holes',
+          required: true,
+          promise: supabase.from('holes').select('*').order('hole_number', { ascending: true }),
+        },
+        {
+          key: 'teams',
+          required: true,
+          promise: supabase.from('teams').select('*').order('id', { ascending: true }),
+        },
+        {
+          key: 'players',
+          required: true,
+          promise: supabase.from('players').select('*').order('rank', { ascending: true }),
+        },
+        {
+          key: 'scores',
+          required: true,
+          promise: supabase.from('scores').select('*'),
+        },
+        {
+          key: 'keg',
+          required: true,
+          promise: supabase.from('keg_stand_entries').select('*'),
+        },
+        {
+          key: 'pitcher',
+          required: true,
+          promise: supabase.from('pitcher_finishes').select('*'),
+        },
+        {
+          key: 'guinness',
+          required: true,
+          promise: supabase.from('guinness_split_votes').select('*'),
+        },
+        {
+          key: 'bunker',
+          required: true,
+          promise: supabase.from('bunker_hazard_entries').select('*'),
+        },
+        {
+          key: 'playerStats',
+          required: false,
+          promise: supabase.from('player_stats').select('*'),
+        },
+      ]
 
-    const firstError =
-      holesError ||
-      teamsError ||
-      playersError ||
-      scoresError ||
-      kegError ||
-      pitcherError ||
-      guinnessError ||
-      bunkerError
-    // player_stats is optional (e.g. view not yet populated)
-    if (playerStatsError) {
-      setPlayerStats([])
-    } else {
-      setPlayerStats(playerStatsData || [])
-    }
+      const settled = await Promise.allSettled(
+        queries.map((query) => runQueryWithTimeout(query.promise, query.key))
+      )
 
-    if (firstError) {
-      setError(firstError.message || 'Failed to load data')
-      setLoading(false)
-      setRefreshing(false)
-      return
-    }
+      const dataByKey = {}
+      const requiredErrors = []
 
-    const nextHoles = holesData || []
-    const nextTeams = teamsData || []
-    const nextPlayers = playersData || []
-    const nextScores = scoresData || []
-    const nextKeg = kegData || []
-    const nextPitcher = pitcherData || []
-    const nextGuinness = guinnessData || []
-    const nextBunker = bunkerData || []
+      settled.forEach((result, index) => {
+        const query = queries[index]
 
-    setHoles(nextHoles)
-    setTeams(nextTeams)
-    setPlayers(nextPlayers)
-    setScores(nextScores)
-    setKegStandEntries(nextKeg)
-    setPitcherFinishes(nextPitcher)
-    setGuinnessVotes(nextGuinness)
-    setBunkerHazardEntries(nextBunker)
+        if (result.status === 'rejected') {
+          const message = result.reason?.message || 'Request failed'
+          if (query.required) {
+            requiredErrors.push(`${query.key}: ${message}`)
+          } else {
+            console.warn(`${query.key} load failed:`, message)
+          }
+          return
+        }
 
-    setLoggedInTeam((current) => {
-      if (!current?.id) return null
+        const { data, error: queryError } = result.value
+        if (queryError) {
+          const message = queryError.message || 'Request failed'
+          if (query.required) {
+            requiredErrors.push(`${query.key}: ${message}`)
+          } else {
+            console.warn(`${query.key} load failed:`, message)
+          }
+          return
+        }
 
-      const freshTeam = nextTeams.find((team) => team.id === current.id)
-      if (!freshTeam) {
+        dataByKey[query.key] = data || []
+      })
+
+      const nextHoles = dataByKey.holes || []
+      const nextTeams = dataByKey.teams || []
+      const nextPlayers = dataByKey.players || []
+      const nextScores = dataByKey.scores || []
+      const nextKeg = dataByKey.keg || []
+      const nextPitcher = dataByKey.pitcher || []
+      const nextGuinness = dataByKey.guinness || []
+      const nextBunker = dataByKey.bunker || []
+      const nextPlayerStats = dataByKey.playerStats || []
+
+      setHoles(nextHoles)
+      setTeams(nextTeams)
+      setPlayers(nextPlayers)
+      setScores(nextScores)
+      setKegStandEntries(nextKeg)
+      setPitcherFinishes(nextPitcher)
+      setGuinnessVotes(nextGuinness)
+      setBunkerHazardEntries(nextBunker)
+      setPlayerStats(nextPlayerStats)
+
+      setLoggedInTeam((current) => {
+        if (!current?.id) return null
+
+        const freshTeam = nextTeams.find((team) => team.id === current.id)
+        if (!freshTeam) {
+          try {
+            localStorage.removeItem(TEAM_LOGIN_STORAGE_KEY)
+          } catch {
+            // ignore
+          }
+          return null
+        }
+
+        const memberNames = nextPlayers
+          .filter((p) => p.team_id === freshTeam.id)
+          .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
+          .map((p) => p.name)
+        const enrichedTeam = { ...freshTeam, members: memberNames }
+
         try {
-          localStorage.removeItem(TEAM_LOGIN_STORAGE_KEY)
+          localStorage.setItem(TEAM_LOGIN_STORAGE_KEY, JSON.stringify(enrichedTeam))
         } catch {
           // ignore
         }
-        return null
+
+        return enrichedTeam
+      })
+
+      if (requiredErrors.length) {
+        setError(`Some data failed to load: ${requiredErrors.join(' | ')}`)
       }
-
-      const memberNames = nextPlayers
-        .filter((p) => p.team_id === freshTeam.id)
-        .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
-        .map((p) => p.name)
-      const enrichedTeam = { ...freshTeam, members: memberNames }
-
-      try {
-        localStorage.setItem(TEAM_LOGIN_STORAGE_KEY, JSON.stringify(enrichedTeam))
-      } catch {
-        // ignore
-      }
-
-      return enrichedTeam
-    })
-
-    setLoading(false)
-    setRefreshing(false)
+    } catch (loadError) {
+      setError(loadError?.message || 'Failed to load data')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }
 
   async function refreshData() {
-    await supabase.rpc('refresh_player_stats').then(({ error }) => {
-      if (error) console.warn('refresh_player_stats:', error?.message)
-    })
+    try {
+      const { error: refreshError } = await supabase.rpc('refresh_player_stats')
+      if (refreshError) console.warn('refresh_player_stats:', refreshError.message)
+    } catch (refreshError) {
+      console.warn('refresh_player_stats threw:', refreshError?.message || refreshError)
+    }
     await loadAllData(false)
   }
 

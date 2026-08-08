@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { formatCurrency, formatSeconds } from '../lib/helpers'
+import { formatCurrency, formatSeconds, toBoolean } from '../lib/helpers'
 
 const SCORE_ADJUSTMENT_TOKENS = {
   teamKaraoke: '[adj:team-karaoke]',
@@ -233,11 +233,11 @@ function renderHoleDetails(hole, players = []) {
   const price = details.price !== null && details.price !== undefined ? details.price : null
 
   const flags = []
-  if (details.is_guinness) flags.push('Guinness')
-  if (details.water_violated) flags.push('water violated')
-  if (details.spilled_drink) flags.push('spilled drink')
-  if (details.threw_up) flags.push('threw up')
-  if (details.photobooth_missing) flags.push('no photobooth proof')
+  if (toBoolean(details.is_guinness)) flags.push('Guinness')
+  if (toBoolean(details.water_violated)) flags.push('water violated')
+  if (toBoolean(details.spilled_drink)) flags.push('spilled drink')
+  if (toBoolean(details.threw_up)) flags.push('threw up')
+  if (toBoolean(details.photobooth_missing)) flags.push('no photobooth proof')
 
   if (hasTeamKaraoke) flags.push('team karaoke (-5)')
   if (hasFadoBestGSplit) flags.push('best g split (-1)')

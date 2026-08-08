@@ -21,6 +21,23 @@ function toTimestamp(value) {
 }
 
 /**
+ * Safe boolean conversion.
+ * Handles common serialized values like "true"/"false" and 1/0.
+ */
+export function toBoolean(value, fallback = false) {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['true', 't', '1', 'yes', 'y', 'on'].includes(normalized)) return true
+    if (['false', 'f', '0', 'no', 'n', 'off', ''].includes(normalized)) return false
+  }
+
+  return fallback
+}
+
+/**
  * Standard pub golf hole score calculation.
  *
  * Rules from your previous helper:
@@ -39,11 +56,11 @@ export function calculateStandardHoleScore(score) {
 
   let total = toNumber(score.sips, 0)
 
-  if (score.is_guinness) total -= 1
-  if (score.water_violated) total += 3
-  if (score.threw_up) total += 5
-  if (score.spilled_drink) total += 1
-  if (score.photobooth_missing) total += 2
+  if (toBoolean(score.is_guinness)) total -= 1
+  if (toBoolean(score.water_violated)) total += 3
+  if (toBoolean(score.threw_up)) total += 5
+  if (toBoolean(score.spilled_drink)) total += 1
+  if (toBoolean(score.photobooth_missing)) total += 2
 
   total += toNumber(score.bonus_penalty, 0)
   total -= toNumber(score.split_g_bonus, 0)
