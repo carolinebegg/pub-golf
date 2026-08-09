@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   buildKegStandTeamLeaderboard,
@@ -20,16 +20,12 @@ export default function KegStandSection({
   const [seconds, setSeconds] = useState('')
   const [editingEntryId, setEditingEntryId] = useState(null)
 
-  const playersForTeam = useMemo(
-    () =>
-      sortPlayersByRank(
-        players.filter((p) => p.team_id === team?.id)
-      ),
-    [players, team?.id]
+  const playersForTeam = sortPlayersByRank(
+    players.filter((p) => p.team_id === team?.id)
   )
-  const playerById = useMemo(
-    () => new Map(players.map((p) => [p.id, p])),
-    [players]
+  
+  const playerById = new Map(
+    players.map((p) => [p.id, p])
   )
 
   const [saving, setSaving] = useState(false)
@@ -129,41 +125,37 @@ export default function KegStandSection({
     setShowLeaderboard(true)
     setDeletingId(null)
   }
+  
+  const enrichedEntries = entriesForHole.map((entry) => {
+    const entryTeam = allTeams.find((t) => t.id === entry.team_id)
+    const player = entry.player_id ? playerById.get(entry.player_id) : null
 
-  const enrichedEntries = useMemo(() => {
-    return entriesForHole.map((entry) => {
-      const entryTeam = allTeams.find((t) => t.id === entry.team_id)
-      const player = entry.player_id ? playerById.get(entry.player_id) : null
-      return {
-        ...entry,
-        teamLabel: entryTeam
-          ? (entryTeam.theme || 'Team')
-          : 'Unknown team',
-        playerName: player?.name ?? '—',
-      }
-    })
-  }, [entriesForHole, allTeams, playerById])
+    return {
+      ...entry,
+      teamLabel: entryTeam
+        ? (entryTeam.theme || 'Team')
+        : 'Unknown team',
+      playerName: player?.name ?? '—',
+    }
+  })
 
-  const individualTimesLeaderboard = useMemo(
-    () => rankKegStandIndividualEntries(enrichedEntries),
-    [enrichedEntries]
+  const individualTimesLeaderboard =
+    rankKegStandIndividualEntries(enrichedEntries)
+
+  const teamEntries = enrichedEntries.filter(
+    (entry) => entry.team_id === team.id
   )
 
-  const teamEntries = useMemo(() => {
-    return enrichedEntries.filter((entry) => entry.team_id === team.id)
-  }, [enrichedEntries, team.id])
+  const teamLeaderboard = buildKegStandTeamLeaderboard(entriesForHole).map((row) => {
+    const t = allTeams.find((teamRow) => teamRow.id === row.team_id)
 
-  const teamLeaderboard = useMemo(() => {
-    return buildKegStandTeamLeaderboard(entriesForHole).map((row) => {
-      const t = allTeams.find((teamRow) => teamRow.id === row.team_id)
-      return {
-        ...row,
-        teamLabel: t
-          ? (t.theme || 'Team')
-          : 'Unknown team',
-      }
-    })
-  }, [entriesForHole, allTeams])
+    return {
+      ...row,
+      teamLabel: t
+        ? (t.theme || 'Team')
+        : 'Unknown team',
+    }
+  })
 
   return (
     <div style={styles.wrap}>
