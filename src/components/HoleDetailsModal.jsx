@@ -10,6 +10,7 @@ import {
   formatHoleTimeRange,
   getHoleDisplayLabel,
   getEffectiveHoleType,
+  sortPlayersByRank,
 } from '../lib/helpers'
 
 export default function HoleDetailsModal({
@@ -24,7 +25,6 @@ export default function HoleDetailsModal({
   guinnessVotes = [],
   kegEntriesForHole = [],
   pitcherFinishesForHole = [],
-  bunkerHazardEntries = [],
   onChanged,
   onClose,
 }) {
@@ -133,7 +133,6 @@ export default function HoleDetailsModal({
                 players={players}
                 existingScore={existingScore}
                 bunkerEntryForHole={bunkerEntryForHole}
-                bunkerHazardEntries={bunkerHazardEntries}
                 onChanged={onChanged}
               />
             </section>
@@ -254,15 +253,14 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
   }
 
   const options = useMemo(() => {
-    return players
-      .filter((p) => p.team_id !== votingTeam.id)
-      .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
-      .map((p) => ({
-        playerId: p.id,
-        playerName: p.name,
-        teamId: p.team_id,
-        teamLabel: teamById.get(p.team_id)?.theme || 'Team',
-      }))
+    return sortPlayersByRank(
+      players.filter((p) => p.team_id !== votingTeam.id)
+    ).map((p) => ({
+      playerId: p.id,
+      playerName: p.name,
+      teamId: p.team_id,
+      teamLabel: teamById.get(p.team_id)?.theme || 'Team',
+    }))
   }, [players, votingTeam.id, teamById])
 
   const holeVotes = useMemo(

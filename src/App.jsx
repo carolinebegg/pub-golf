@@ -4,6 +4,7 @@ import {
   buildOverallLeaderboardData,
   getEffectiveHoleType,
   sortHolesByNumber,
+  sortPlayersByRank,
 } from './lib/helpers'
 import TeamLogin, { TEAM_LOGIN_STORAGE_KEY } from './components/TeamLogin'
 import LeaderboardView from './components/LeaderboardView'
@@ -214,10 +215,9 @@ export default function App() {
           return null
         }
 
-        const memberNames = nextPlayers
-          .filter((p) => p.team_id === freshTeam.id)
-          .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
-          .map((p) => p.name)
+        const memberNames = sortPlayersByRank(
+          nextPlayers.filter((p) => p.team_id == freshTeam.id)
+        ).map((p) => p.name)
         const enrichedTeam = { ...freshTeam, members: memberNames }
 
         try {
@@ -272,10 +272,9 @@ export default function App() {
     () =>
       teams.map((team) => ({
         ...team,
-        members: players
-          .filter((p) => p.team_id === team.id)
-          .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
-          .map((p) => p.name),
+        members: sortPlayersByRank(
+          players.filter((p) => p.team_id == team.id)
+        ).map((p) => p.name),
       })),
     [teams, players]
   )
@@ -581,12 +580,9 @@ export default function App() {
               {activeView === 'holes' && (
                 <HolesView
                   holes={orderedHoles}
-                  holeDataById={holeDataById}
-                  holeStatusById={holeStatusById}
                   holeScoreById={holeScoreById}
                   onOpenHoleDetails={handleOpenHoleDetails}
                   selectedTeam={loggedInTeam}
-                  players={players}
                 />
               )}
               {activeView === 'players' && (
@@ -608,7 +604,6 @@ export default function App() {
             kegEntriesForHole={selectedHoleKegEntries}
             pitcherFinishesForHole={selectedHolePitcherFinishes}
             guinnessVotes={guinnessVotes}
-            bunkerHazardEntries={bunkerHazardEntries}
             onChanged={refreshData}
             onClose={handleCloseHoleDetails}
           />

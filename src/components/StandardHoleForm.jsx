@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { calculateStandardHoleScore, formatCurrency, toBoolean } from '../lib/helpers'
+import { calculateStandardHoleScore, formatCurrency, toBoolean, sortPlayersByRank } from '../lib/helpers'
 
 const SCORE_ADJUSTMENT_TOKENS = {
   teamKaraoke: '[adj:team-karaoke]',
@@ -110,14 +110,13 @@ export default function StandardHoleForm({
   players = [],
   existingScore = null,
   bunkerEntryForHole = null,
-  bunkerHazardEntries = [],
   onChanged,
 }) {
   const playersForTeam = useMemo(
     () =>
-      players
-        .filter((p) => p.team_id === team?.id)
-        .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0)),
+      sortPlayersByRank(
+        players.filter((p) => p.team_id === team?.id)
+      ),
     [players, team?.id]
   )
   const [form, setForm] = useState(() => {

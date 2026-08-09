@@ -8,12 +8,6 @@ export default function HoleCard({
   hole,
   onOpenDetails,
   selectedTeam,
-  existingScore = null,
-  kegEntries = [],
-  pitcherFinish = null,
-  holeStatus = 'not-started',
-  bunkerEntry = null,
-  players = [],
   scoreForHole = null,
 }) {
   const holeType = getEffectiveHoleType(hole)
