@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import StandardHoleForm from './StandardHoleForm'
 import KegStandSection from './KegStandSection'
 import PitcherRaceSection from './PitcherRaceSection'
@@ -214,15 +214,14 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
     setWorstSelection(existingVote.worst_voted_player_id ? String(existingVote.worst_voted_player_id) : '')
   }, [existingVote])
 
-  const playerById = useMemo(
-    () => new Map(players.map((p) => [p.id, p])),
-    [players]
-  )
-  const teamById = useMemo(
-    () => new Map(allTeams.map((t) => [t.id, t])),
-    [allTeams]
+  const playerById = new Map(
+    players.map((p) => [p.id, p])
   )
 
+  const teamById = new Map(
+    allTeams.map((t) => [t.id, t])
+  )
+  
   function buildGuinnessLeaderboardByPlayerId(voteRows, prefix) {
     const playerIdField = `${prefix}_voted_player_id`
     const counts = new Map()
@@ -252,8 +251,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
     })
   }
 
-  const options = useMemo(() => {
-    return sortPlayersByRank(
+  const options = sortPlayersByRank(
       players.filter((p) => p.team_id !== votingTeam.id)
     ).map((p) => ({
       playerId: p.id,
@@ -261,23 +259,15 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
       teamId: p.team_id,
       teamLabel: teamById.get(p.team_id)?.theme || 'Team',
     }))
-  }, [players, votingTeam.id, teamById])
 
-  const holeVotes = useMemo(
-    () => votes.filter((vote) => vote.hole_id === hole.id),
-    [votes, hole.id],
+  const holeVotes = votes.filter(
+    (vote) => vote.hole_id === hole.id
   )
 
-  const bestLeaderboard = useMemo(
-    () => buildGuinnessLeaderboardByPlayerId(holeVotes, 'best').slice(0, 5),
-    [holeVotes, playerById, teamById],
-  )
+  const bestLeaderboard = buildGuinnessLeaderboardByPlayerId(holeVotes, 'best').slice(0, 5)
 
-  const worstLeaderboard = useMemo(
-    () => buildGuinnessLeaderboardByPlayerId(holeVotes, 'worst').slice(0, 5),
-    [holeVotes, playerById, teamById],
-  )
-
+  const worstLeaderboard = buildGuinnessLeaderboardByPlayerId(holeVotes, 'worst').slice(0, 5)
+  
   const hasVote = Boolean(
     existingVote &&
       (existingVote.best_voted_player_id || existingVote.worst_voted_player_id),
