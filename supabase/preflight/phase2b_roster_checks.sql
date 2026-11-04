@@ -151,7 +151,6 @@ begin
   end;
 
   update public.players set team_id = team_b where id = player_b;
-  insert into public.players (course_id, team_id, name) values (test_course, team_c, 'Pat') returning id into player_c;
 
   begin
     update public.players set team_id = original_team where id = player_a;
@@ -179,6 +178,10 @@ begin
   end if;
 
   update public.players set team_id = team_a where id = player_a;
+  insert into public.players (course_id, team_id, name)
+  values (test_course, team_c, 'Pat')
+  returning id into player_c;
+
   insert into public.scores (
     team_id, hole_id, drink_name, sips, player_id, is_guinness,
     water_violated, spilled_drink, threw_up, photobooth_missing,
@@ -461,9 +464,10 @@ begin
   end if;
 
   if exists (
-    select 1 from public.courses
-    where id = original_course
-      and organizer_id is not null
+    select 1
+    from public.courses as courses
+    where courses.id = original_course
+      and courses.organizer_id is not null
   ) then
     raise exception 'The original course was claimed.';
   end if;
