@@ -33,7 +33,8 @@ declare
   player_a uuid;
   player_b uuid;
   player_c uuid;
-  hole_id uuid;
+  test_hole_id uuid;
+  auth_player uuid;
   score_id uuid;
   vote_id uuid;
   kept_team uuid;
@@ -99,7 +100,7 @@ begin
   ) values (
     test_course, 91, 'Roster Check', '12:00', 'Check',
     'sips', 'standard', 'normal', false, false, false
-  ) returning id into hole_id;
+  ) returning id into test_hole_id;
 
   insert into public.teams (course_id, theme)
   values (test_course, 'Roster A')
@@ -183,7 +184,7 @@ begin
     water_violated, spilled_drink, threw_up, photobooth_missing,
     split_g_bonus, bonus_penalty
   ) values (
-    team_a, hole_id, 'water', 1, player_a, false,
+    team_a, test_hole_id, 'water', 1, player_a, false,
     false, false, false, false,
     0, 0
   ) returning id into score_id;
@@ -191,7 +192,7 @@ begin
   insert into public.guinness_split_votes (
     hole_id, voting_team_id, best_voted_player_id, worst_voted_player_id
   ) values (
-    hole_id, team_b, player_a, player_c
+    test_hole_id, team_b, player_a, player_c
   ) returning id into vote_id;
 
   delete from public.players where id = player_a;
@@ -279,9 +280,45 @@ begin
     raise exception 'The organizer could not see an unassigned player.';
   end if;
 
+  insert into public.players (course_id, name)
+  values (test_course, 'Casey')
+  returning id into auth_player;
+
+  update public.players set team_id = team_b where id = auth_player;
+  get diagnostics changed_rows = row_count;
+  if changed_rows <> 1 then
+    raise exception 'The organizer could not assign a player.';
+  end if;
+
+  update public.players set team_id = team_c where id = auth_player;
+  get diagnostics changed_rows = row_count;
+  if changed_rows <> 1
+    or (select players.team_id from public.players where players.id = auth_player) is distinct from team_c then
+    raise exception 'The organizer could not move a player.';
+  end if;
+
+  update public.players set team_id = null where id = auth_player;
+  get diagnostics changed_rows = row_count;
+  if changed_rows <> 1
+    or exists (select 1 from public.players where id = auth_player and team_id is not null) then
+    raise exception 'The organizer could not unassign a player.';
+  end if;
+
+  delete from public.players where id = auth_player;
+  get diagnostics changed_rows = row_count;
+  if changed_rows <> 1 or exists (select 1 from public.players where id = auth_player) then
+    raise exception 'The organizer could not delete a player.';
+  end if;
+
   select join_code into renamed_code from public.teams where id = kept_team;
   if renamed_code is null then
     raise exception 'The organizer could not read the new team join code.';
+  end if;
+
+  delete from public.teams where id = kept_team;
+  get diagnostics changed_rows = row_count;
+  if changed_rows <> 1 or exists (select 1 from public.teams where id = kept_team) then
+    raise exception 'The organizer could not delete a team.';
   end if;
 
   select count(*) into visible_codes
@@ -324,6 +361,12 @@ begin
       end if;
   end;
 
+  delete from public.teams where id = original_team;
+  get diagnostics changed_rows = row_count;
+  if changed_rows <> 0 then
+    raise exception 'The organizer deleted a team on another course.';
+  end if;
+
   perform set_config(
     'request.jwt.claims',
     json_build_object('sub', other_organizer, 'role', 'authenticated', 'is_anonymous', true)::text,
@@ -340,6 +383,29 @@ begin
         raise;
       end if;
   end;
+
+  begin
+    insert into public.players (course_id, name) values (test_course, 'Anonymous Player');
+    raise exception 'An anonymous player added a roster entry.';
+  exception
+    when others then
+      if sqlerrm not like '%Only the course organizer%' and sqlstate <> '42501' then
+        raise;
+      end if;
+  end;
+
+  update public.players set name = 'Changed' where id = player_b;
+  get diagnostics changed_rows = row_count;
+  if changed_rows <> 0
+    or (select players.name from public.players where players.id = player_b) is distinct from 'Pat' then
+    raise exception 'An anonymous player renamed a roster entry.';
+  end if;
+
+  delete from public.teams where id = team_b;
+  get diagnostics changed_rows = row_count;
+  if changed_rows <> 0 then
+    raise exception 'An anonymous player deleted a team.';
+  end if;
 
   begin
     perform public.release_player_access(kept_player);
@@ -435,15 +501,15 @@ begin
     water_violated, spilled_drink, threw_up, photobooth_missing,
     split_g_bonus, bonus_penalty
   ) values (
-    team_b, hole_id, 'water', 1, player_b, false,
+    team_b, test_hole_id, 'water', 1, player_b, false,
     false, false, false, false,
     0, 0
   );
 
   update public.scores
   set sips = 2
-  where team_id = team_b
-    and hole_id = hole_id;
+  where scores.team_id = team_b
+    and scores.hole_id = test_hole_id;
   get diagnostics changed_rows = row_count;
   if changed_rows <> 1 then
     raise exception 'A joined player could not update their team score.';
@@ -458,8 +524,8 @@ begin
 
   update public.scores
   set sips = 9
-  where team_id = team_b
-    and hole_id = hole_id;
+  where scores.team_id = team_b
+    and scores.hole_id = test_hole_id;
   get diagnostics changed_rows = row_count;
   if changed_rows <> 0 then
     raise exception 'Another account updated this team score.';

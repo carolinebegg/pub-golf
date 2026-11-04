@@ -209,6 +209,77 @@ create policy players_read
   to anon, authenticated
   using (team_id is not null);
 
+-- Step 3 allowed organizer writes with one FOR ALL policy. Split that into
+-- select, insert, update, and delete so each roster change is organizer-only.
+-- Anonymous users fail is_course_organizer, and so does any other organizer.
+drop policy if exists teams_organizer_write on public.teams;
+drop policy if exists teams_organizer_select on public.teams;
+drop policy if exists teams_organizer_insert on public.teams;
+drop policy if exists teams_organizer_update on public.teams;
+drop policy if exists teams_organizer_delete on public.teams;
+
+create policy teams_organizer_select
+  on public.teams
+  for select
+  to authenticated
+  using (public.is_course_organizer(course_id));
+
+create policy teams_organizer_insert
+  on public.teams
+  for insert
+  to authenticated
+  with check (public.is_course_organizer(course_id));
+
+create policy teams_organizer_update
+  on public.teams
+  for update
+  to authenticated
+  using (public.is_course_organizer(course_id))
+  with check (public.is_course_organizer(course_id));
+
+create policy teams_organizer_delete
+  on public.teams
+  for delete
+  to authenticated
+  using (public.is_course_organizer(course_id));
+
+drop policy if exists players_organizer_write on public.players;
+drop policy if exists players_organizer_select on public.players;
+drop policy if exists players_organizer_insert on public.players;
+drop policy if exists players_organizer_update on public.players;
+drop policy if exists players_organizer_delete on public.players;
+
+create policy players_organizer_select
+  on public.players
+  for select
+  to authenticated
+  using (public.is_course_organizer(course_id));
+
+create policy players_organizer_insert
+  on public.players
+  for insert
+  to authenticated
+  with check (public.is_course_organizer(course_id));
+
+create policy players_organizer_update
+  on public.players
+  for update
+  to authenticated
+  using (public.is_course_organizer(course_id))
+  with check (public.is_course_organizer(course_id));
+
+create policy players_organizer_delete
+  on public.players
+  for delete
+  to authenticated
+  using (public.is_course_organizer(course_id));
+
+-- The client role needs these privileges. Row policies still decide which rows.
+revoke insert, update, delete on public.teams from anon;
+revoke insert, update, delete on public.players from anon;
+grant select, insert, update, delete on public.teams to authenticated;
+grant select, insert, update, delete on public.players to authenticated;
+
 -- Release already deletes the sign-in row and leaves the player in place.
 -- Anonymous callers are not organizers, even if a user id matched.
 create or replace function public.release_player_access(target_player_id uuid)
