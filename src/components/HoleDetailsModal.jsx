@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import StandardHoleForm from './StandardHoleForm'
 import KegStandSection from './KegStandSection'
 import PitcherRaceSection from './PitcherRaceSection'
@@ -10,6 +10,8 @@ import {
   formatHoleTimeRange,
   getHoleDisplayLabel,
   getEffectiveHoleType,
+  sortPlayersByName,
+  validateSplitGVote,
 } from '../lib/helpers'
 
 export default function HoleDetailsModal({
@@ -24,7 +26,6 @@ export default function HoleDetailsModal({
   guinnessVotes = [],
   kegEntriesForHole = [],
   pitcherFinishesForHole = [],
-  bunkerHazardEntries = [],
   onChanged,
   onClose,
 }) {
@@ -53,7 +54,9 @@ export default function HoleDetailsModal({
   const holeType = getEffectiveHoleType(hole)
   const holeTypeLabel = getHoleDisplayLabel(hole, holeType)
   const statusLabel = getStatusLabel(holeStatus)
-  const scorePreview = calculateStandardHoleScore(existingScore)
+  const scorePreview = calculateStandardHoleScore(existingScore, {
+    bunkerIncomplete: Boolean(hole?.has_bunker) && !bunkerEntryForHole,
+  })
   const isGuinnessHole = Boolean(hole?.has_guinness)
 
   function handleBackdropMouseDown(event) {
@@ -74,6 +77,7 @@ export default function HoleDetailsModal({
           <div>
             <p className="breakdown-modal-eyebrow">Hole Details</p>
             <h3 className="breakdown-modal-title">Hole {hole.hole_number} - {hole.bar_name}</h3>
+            {hole.address ? <p className="breakdown-modal-members">{hole.address}</p> : null}
             <p className="breakdown-modal-members">{holeTypeLabel} • {formatHoleTimeRange(hole)}</p>
           </div>
 
@@ -133,7 +137,6 @@ export default function HoleDetailsModal({
                 players={players}
                 existingScore={existingScore}
                 bunkerEntryForHole={bunkerEntryForHole}
-                bunkerHazardEntries={bunkerHazardEntries}
                 onChanged={onChanged}
               />
             </section>
@@ -215,15 +218,14 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
     setWorstSelection(existingVote.worst_voted_player_id ? String(existingVote.worst_voted_player_id) : '')
   }, [existingVote])
 
-  const playerById = useMemo(
-    () => new Map(players.map((p) => [p.id, p])),
-    [players]
-  )
-  const teamById = useMemo(
-    () => new Map(allTeams.map((t) => [t.id, t])),
-    [allTeams]
+  const playerById = new Map(
+    players.map((p) => [p.id, p])
   )
 
+  const teamById = new Map(
+    allTeams.map((t) => [t.id, t])
+  )
+  
   function buildGuinnessLeaderboardByPlayerId(voteRows, prefix) {
     const playerIdField = `${prefix}_voted_player_id`
     const counts = new Map()
@@ -253,33 +255,23 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
     })
   }
 
-  const options = useMemo(() => {
-    return players
-      .filter((p) => p.team_id !== votingTeam.id)
-      .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
-      .map((p) => ({
-        playerId: p.id,
-        playerName: p.name,
-        teamId: p.team_id,
-        teamLabel: teamById.get(p.team_id)?.theme || 'Team',
-      }))
-  }, [players, votingTeam.id, teamById])
+  const options = sortPlayersByName(
+      players.filter((p) => p.team_id !== votingTeam.id)
+    ).map((p) => ({
+      playerId: p.id,
+      playerName: p.name,
+      teamId: p.team_id,
+      teamLabel: teamById.get(p.team_id)?.theme || 'Team',
+    }))
 
-  const holeVotes = useMemo(
-    () => votes.filter((vote) => vote.hole_id === hole.id),
-    [votes, hole.id],
+  const holeVotes = votes.filter(
+    (vote) => vote.hole_id === hole.id
   )
 
-  const bestLeaderboard = useMemo(
-    () => buildGuinnessLeaderboardByPlayerId(holeVotes, 'best').slice(0, 5),
-    [holeVotes, playerById, teamById],
-  )
+  const bestLeaderboard = buildGuinnessLeaderboardByPlayerId(holeVotes, 'best').slice(0, 5)
 
-  const worstLeaderboard = useMemo(
-    () => buildGuinnessLeaderboardByPlayerId(holeVotes, 'worst').slice(0, 5),
-    [holeVotes, playerById, teamById],
-  )
-
+  const worstLeaderboard = buildGuinnessLeaderboardByPlayerId(holeVotes, 'worst').slice(0, 5)
+  
   const hasVote = Boolean(
     existingVote &&
       (existingVote.best_voted_player_id || existingVote.worst_voted_player_id),
@@ -289,18 +281,17 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
     event.preventDefault()
     setError('')
 
-    if (!bestSelection && !worstSelection) {
-      setError('Select at least one vote.')
-      return
-    }
-
-    if (bestSelection && worstSelection && bestSelection === worstSelection) {
-      setError('Best and worst split cannot be the exact same person.')
-      return
-    }
-
     const bestPlayer = bestSelection ? playerById.get(bestSelection) : null
     const worstPlayer = worstSelection ? playerById.get(worstSelection) : null
+    const voteError = validateSplitGVote({
+      votingTeamId: votingTeam.id,
+      bestPlayer,
+      worstPlayer,
+    })
+    if (voteError) {
+      setError(voteError)
+      return
+    }
 
     setSaving(true)
 

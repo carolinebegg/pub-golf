@@ -233,7 +233,6 @@ function renderHoleDetails(hole, players = []) {
   const price = details.price !== null && details.price !== undefined ? details.price : null
 
   const flags = []
-  if (toBoolean(details.is_guinness)) flags.push('Guinness')
   if (toBoolean(details.water_violated)) flags.push('water violated')
   if (toBoolean(details.spilled_drink)) flags.push('spilled drink')
   if (toBoolean(details.threw_up)) flags.push('threw up')

@@ -38,25 +38,16 @@ export function toBoolean(value, fallback = false) {
 }
 
 /**
- * Standard pub golf hole score calculation.
- *
- * Rules from your previous helper:
- * - base = sips
- * - Guinness = -1
- * - water violated = +3
- * - threw up = +5
- * - spilled drink = +1
- * - photobooth missing = +2
- * - bonus_penalty = additive
- *
- * Also supports split_g_bonus if present in schema.
+ * Sip-based score for a normal or bunker hole.
+ * Sips are the base. Water, spill, throw-up, photobooth, and note bonuses
+ * are added next. An incomplete bunker adds +3. Guinness does not change
+ * the score, and the result is not floored.
  */
-export function calculateStandardHoleScore(score) {
+export function calculateStandardHoleScore(score, options = {}) {
   if (!score) return null
 
   let total = toNumber(score.sips, 0)
 
-  if (toBoolean(score.is_guinness)) total -= 1
   if (toBoolean(score.water_violated)) total += 3
   if (toBoolean(score.threw_up)) total += 5
   if (toBoolean(score.spilled_drink)) total += 1
@@ -65,7 +56,37 @@ export function calculateStandardHoleScore(score) {
   total += toNumber(score.bonus_penalty, 0)
   total -= toNumber(score.split_g_bonus, 0)
 
-  return Math.max(0, total)
+  if (options.bunkerIncomplete) total += 3
+
+  return total
+}
+
+export function validateSplitGVote({ votingTeamId, bestPlayer = null, worstPlayer = null }) {
+  if (!bestPlayer && !worstPlayer) return 'Select at least one vote.'
+  if (bestPlayer && worstPlayer && bestPlayer.id === worstPlayer.id) {
+    return 'Best and worst split cannot be the exact same person.'
+  }
+  if (bestPlayer?.team_id === votingTeamId || worstPlayer?.team_id === votingTeamId) {
+    return 'You cannot vote for a player on your own team.'
+  }
+  return ''
+}
+
+export function isHoleComplete(hole, holeState) {
+  if (!holeState) return false
+
+  const holeType = getEffectiveHoleType(hole)
+
+  switch (holeType) {
+    case 'keg_stand':
+      return Array.isArray(holeState.kegEntries) && holeState.kegEntries.length > 0
+    case 'pitcher':
+      return Boolean(holeState.pitcherFinish)
+    case 'standard':
+    default:
+      if (hole.has_guinness) return Boolean(holeState.guinnessVote)
+      return Boolean(holeState.existingScore)
+  }
 }
 
 /**
@@ -278,20 +299,31 @@ export function sortHolesByNumber(holes = []) {
 
 /**
  * Resolve hole type used by UI + scoring logic.
- * Holes 2 and 9 are always pitcher race holes.
+ * Stored primary_type wins. The old hole-number shortcut remains only for a
+ * row that never received a primary type.
  */
 export function getEffectiveHoleType(hole) {
-  const holeNumber = toNumber(hole?.hole_number, null)
+  const primaryType = hole?.primary_type
+  const storedType = hole?.hole_type
 
-  if (holeNumber === 2 || holeNumber === 9) {
+  if (
+    primaryType === 'pitcher_kill'
+    || storedType === 'pitcher_race'
+    || storedType === 'pitcher'
+  ) {
     return 'pitcher'
   }
 
-  if (hole?.hole_type === 'keg_stand') {
+  if (primaryType === 'keg_stand' || storedType === 'keg_stand') {
     return 'keg_stand'
   }
 
-  if (hole?.hole_type === 'pitcher') {
+  if (primaryType === 'normal' || primaryType === 'bunker' || primaryType === 'split_the_g') {
+    return 'standard'
+  }
+
+  const holeNumber = toNumber(hole?.hole_number, null)
+  if (holeNumber === 2 || holeNumber === 9) {
     return 'pitcher'
   }
 
@@ -368,20 +400,16 @@ export function formatSeconds(value) {
   return `${toNumber(value, 0).toFixed(2)}s`
 }
 
-const PLAYER_RANK_ORDER = ['S', 'A', 'B', 'C', 'D', 'E', 'F']
+export const LEGACY_COURSE_TITLE = 'Pub Golf: The SQL'
 
-function playerRankSortIndex(rank) {
-  const r = String(rank ?? '').toUpperCase().trim()
-  const i = PLAYER_RANK_ORDER.indexOf(r)
-  return i === -1 ? PLAYER_RANK_ORDER.length : i
+export function pickActiveCourse(courses = []) {
+  if (!Array.isArray(courses) || courses.length === 0) return null
+  return courses.find((course) => course?.title === LEGACY_COURSE_TITLE) || courses[0]
 }
 
-/**
- * Sorts players by rank (S, A, B, C, D, E, F order).
- */
-export function sortPlayersByRank(players) {
-  return [...(players || [])].sort(
-    (a, b) => playerRankSortIndex(a.rank) - playerRankSortIndex(b.rank)
+export function sortPlayersByName(players) {
+  return [...(players || [])].sort((a, b) =>
+    String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' })
   )
 }
 
@@ -400,37 +428,35 @@ export function getGuinnessHoleVoteTeamEffects(holeId, guinnessVotes = [], playe
   const bestCounts = new Map()
   const worstCounts = new Map()
 
-  for (const v of votes) {
-    if (v.best_voted_player_id) {
-      const id = v.best_voted_player_id
-      bestCounts.set(id, (bestCounts.get(id) || 0) + 1)
-    }
-    if (v.worst_voted_player_id) {
-      const id = v.worst_voted_player_id
-      worstCounts.set(id, (worstCounts.get(id) || 0) + 1)
-    }
+  function addVote(counts, playerId, storedTeamId) {
+    const teamId = storedTeamId ?? (playerId ? playerById.get(playerId)?.team_id ?? null : null)
+    if (!playerId && !teamId) return
+    const key = playerId || `team:${teamId}`
+    const current = counts.get(key) || { count: 0, teamId }
+    current.count += 1
+    if (current.teamId == null) current.teamId = teamId
+    counts.set(key, current)
   }
 
-  const maxBest = bestCounts.size > 0 ? Math.max(...bestCounts.values()) : 0
-  const maxWorst = worstCounts.size > 0 ? Math.max(...worstCounts.values()) : 0
+  for (const v of votes) {
+    addVote(bestCounts, v.best_voted_player_id, v.best_voted_team_id)
+    addVote(worstCounts, v.worst_voted_player_id, v.worst_voted_team_id)
+  }
+
+  const maxBest = bestCounts.size > 0 ? Math.max(...[...bestCounts.values()].map((row) => row.count)) : 0
+  const maxWorst = worstCounts.size > 0 ? Math.max(...[...worstCounts.values()].map((row) => row.count)) : 0
 
   const bestTeams = new Set()
   if (maxBest > 0) {
-    for (const [playerId, count] of bestCounts) {
-      if (count === maxBest) {
-        const tid = playerById.get(playerId)?.team_id
-        if (tid != null) bestTeams.add(tid)
-      }
+    for (const row of bestCounts.values()) {
+      if (row.count === maxBest && row.teamId != null) bestTeams.add(row.teamId)
     }
   }
 
   const worstTeams = new Set()
   if (maxWorst > 0) {
-    for (const [playerId, count] of worstCounts) {
-      if (count === maxWorst) {
-        const tid = playerById.get(playerId)?.team_id
-        if (tid != null) worstTeams.add(tid)
-      }
+    for (const row of worstCounts.values()) {
+      if (row.count === maxWorst && row.teamId != null) worstTeams.add(row.teamId)
     }
   }
 
@@ -591,15 +617,10 @@ export function buildOverallLeaderboardData({
       }
 
       const scoreRow = getScoreForTeamAndHole(scores, team.id, hole.id)
-      let score = calculateStandardHoleScore(scoreRow)
-      if (score !== null && hole.has_bunker) {
-        const hasBunkerEntry = bunkerHazardEntries.some(
-          (b) => b.hole_id === hole.id && b.team_id === team.id
-        )
-        if (!hasBunkerEntry) {
-          score += 3
-        }
-      }
+      const bunkerMissing =
+        Boolean(hole.has_bunker) &&
+        !bunkerHazardEntries.some((b) => b.hole_id === hole.id && b.team_id === team.id)
+      const score = calculateStandardHoleScore(scoreRow, { bunkerIncomplete: bunkerMissing })
 
       if (score !== null) {
         totalScore += score

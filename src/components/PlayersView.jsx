@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { sortPlayersByRank } from '../lib/helpers'
+import { sortPlayersByName } from '../lib/helpers'
 import PlayerCard from './PlayerCard'
 
 export default function PlayersView({ players = [], teams = [], playerStats = [] }) {
@@ -13,7 +13,7 @@ export default function PlayersView({ players = [], teams = [], playerStats = []
     [playerStats]
   )
 
-  const sortedPlayers = useMemo(() => sortPlayersByRank(players), [players])
+  const sortedPlayers = useMemo(() => sortPlayersByName(players), [players])
 
   const playerWithTeam = useMemo(
     () =>

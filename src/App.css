@@ -203,6 +203,11 @@ p {
   color: #215337;
 }
 
+.team-member-pill.is-you {
+  border-color: var(--green-600);
+  background: var(--green-100);
+}
+
 .team-summary-grid {
   display: grid;
   gap: 9px;
@@ -390,16 +395,9 @@ p {
   outline-offset: 2px;
 }
 
-.player-card-rank {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--green-700);
-  margin-bottom: 6px;
-}
-
 .player-card-name {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
@@ -500,13 +498,6 @@ p {
 .player-card-back-team {
   font-size: 0.85rem;
   color: var(--text-secondary);
-}
-
-.player-card-back-rank {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--green-700);
-  margin-left: auto;
 }
 
 .player-card-stats {
@@ -782,11 +773,6 @@ p {
     border-radius: 12px;
   }
 
-  .player-card-rank {
-    font-size: 0.9rem;
-    margin-bottom: 4px;
-  }
-
   .player-card-name {
     font-size: 0.8rem;
     margin-bottom: 2px;
@@ -848,11 +834,6 @@ p {
     border-radius: 10px;
   }
 
-  .player-card-rank {
-    font-size: 0.8rem;
-    margin-bottom: 2px;
-  }
-
   .player-card-name {
     font-size: 0.7rem;
     margin-bottom: 2px;
@@ -887,6 +868,229 @@ p {
   }
 }
 
+.landing-card,
+.organizer-layout {
+  width: 100%;
+}
+
+.landing-title {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 400;
+  line-height: 1.15;
+  color: #174b31;
+}
+
+.landing-actions,
+.organizer-layout,
+.course-list,
+.auth-links {
+  display: grid;
+  gap: 12px;
+}
+
+.choice-button,
+.course-list-button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--surface-border);
+  background: #f7fbf8;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.choice-button:hover,
+.course-list-button:hover {
+  border-color: #9fbfa8;
+  background: #fff;
+}
+
+.choice-title,
+.course-list-title {
+  font-weight: 800;
+  color: #174b31;
+}
+
+.choice-copy,
+.course-list-code {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.course-list-code,
+.game-code-input {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.game-code-input {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #174b31;
+}
+
+.landing-account {
+  display: grid;
+  gap: 10px;
+}
+
+.organizer-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.text-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--green-700);
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.text-button:hover {
+  text-decoration: underline;
+}
+
+.organizer-layout {
+  justify-items: center;
+}
+
+.organizer-layout .team-panel-card {
+  width: 100%;
+  max-width: 30rem;
+}
+
+.organizer-course {
+  max-width: 40rem;
+}
+
+.section-switch {
+  width: 100%;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.section-switch .view-switch-button {
+  flex: 1 1 8rem;
+}
+
+.roster-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.roster-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  background: #f7fbf8;
+}
+
+.roster-card-heading,
+.roster-player-name,
+.roster-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.roster-heading {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #174b31;
+}
+
+.roster-code-row .team-input {
+  min-width: 0;
+}
+
+.roster-code-input {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #174b31;
+}
+
+.roster-player {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e1ebe3;
+}
+
+.roster-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roster-actions .primary-button,
+.roster-actions .secondary-button,
+.roster-actions .danger-button {
+  flex: 1 1 8rem;
+}
+
+.roster-claim {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #c9dbcb;
+  background: var(--green-100);
+  color: var(--green-700);
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.roster-confirm {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-700);
+  font-weight: 700;
+}
+
+.danger-button {
+  padding: 11px 14px;
+  min-height: 44px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  background: var(--danger-700);
+  color: #fff;
+  font-weight: 800;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #912018;
+}
+
+.secondary-button:disabled,
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (max-width: 380px) {
   .players-grid {
     gap: 6px;
@@ -895,11 +1099,6 @@ p {
   .player-card {
     padding: 6px 2px;
     border-radius: 8px;
-  }
-
-  .player-card-rank {
-    font-size: 0.7rem;
-    margin-bottom: 1px;
   }
 
   .player-card-name {

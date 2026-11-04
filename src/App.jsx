@@ -1,11 +1,41 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import {
   buildOverallLeaderboardData,
-  getEffectiveHoleType,
+  isHoleComplete,
+  LEGACY_COURSE_TITLE,
+  pickActiveCourse,
   sortHolesByNumber,
+  sortPlayersByName,
 } from './lib/helpers'
-import TeamLogin, { TEAM_LOGIN_STORAGE_KEY } from './components/TeamLogin'
+import {
+  clearRememberedJoin,
+  joinExistingPlayer,
+  readRememberedJoin,
+  restoreVerifiedMembership,
+  writeRememberedJoin,
+} from './lib/join'
+import TeamLogin from './components/TeamLogin'
+import Landing from './components/Landing'
+import OrganizerAuth from './components/OrganizerAuth'
+import OrganizerHome from './components/OrganizerHome'
+import { PUBLIC_TEAMS_TABLE } from './lib/teamDirectory'
+import {
+  clearOpenOrganizerCourse,
+  createOrganizerCourse,
+  isOrganizerAccount,
+  isRecoveryUrl,
+  loadOrganizerCourses,
+  organizerFirstName,
+  readOpenOrganizerCourse,
+  screenForSession,
+  sendOrganizerPasswordReset,
+  setOrganizerPassword,
+  signInOrganizer,
+  signOutAccount,
+  signUpOrganizer,
+  writeOpenOrganizerCourse,
+} from './lib/organizer'
 import LeaderboardView from './components/LeaderboardView'
 import HolesView from './components/HolesView'
 import PlayersView from './components/PlayersView'
@@ -13,26 +43,20 @@ import TeamBreakdownModal from './components/TeamBreakdownModal'
 import HoleDetailsModal from './components/HoleDetailsModal'
 import './App.css'
 
-function isHoleComplete(hole, holeState) {
-  if (!holeState) return false
+const QUERY_TIMEOUT_MS = 20000
 
-  const holeType = getEffectiveHoleType(hole)
-
-  switch (holeType) {
-    case 'keg_stand':
-      return Array.isArray(holeState.kegEntries) && holeState.kegEntries.length > 0
-    case 'pitcher':
-      return Boolean(holeState.pitcherFinish)
-    case 'standard':
-    default:
-      if (hole.has_guinness) {
-        return Boolean(holeState.guinnessVote)
-      }
-      return Boolean(holeState.existingScore)
-  }
+function isCoursesUnavailable(error) {
+  if (!error) return false
+  const code = String(error.code || '')
+  const message = String(error.message || '')
+  if (code === '42P01' || code === 'PGRST205') return true
+  return /could not find the table.*courses|relation ["']?(public\.)?courses["']? does not exist/i.test(message)
 }
 
-const QUERY_TIMEOUT_MS = 20000
+function courseRows(table, courseId) {
+  const query = supabase.from(table).select('*')
+  return courseId ? query.eq('course_id', courseId) : query
+}
 
 function runQueryWithTimeout(queryPromise, queryName, timeoutMs = QUERY_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
@@ -62,18 +86,20 @@ export default function App() {
   const [guinnessVotes, setGuinnessVotes] = useState([])
   const [bunkerHazardEntries, setBunkerHazardEntries] = useState([])
   const [playerStats, setPlayerStats] = useState([])
+  const [course, setCourse] = useState(null)
 
-  const [loggedInTeam, setLoggedInTeam] = useState(() => {
+  const [membership, setMembership] = useState(null)
+  const [restoringJoin, setRestoringJoin] = useState(true)
+  const [joinNotice, setJoinNotice] = useState('')
+  const [joinDraft, setJoinDraft] = useState(() => {
     try {
-      const raw = localStorage.getItem(TEAM_LOGIN_STORAGE_KEY)
-      if (!raw) return null
-
-      const parsed = JSON.parse(raw)
-      return parsed?.id ? parsed : null
+      return readRememberedJoin(localStorage)
     } catch {
       return null
     }
   })
+  const membershipRef = useRef(null)
+  membershipRef.current = membership
   const [activeView, setActiveView] = useState(() => {
     try {
       const stored = localStorage.getItem('pub-golf-active-view')
@@ -88,8 +114,28 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const [screen, setScreen] = useState('landing')
+  const [authUser, setAuthUser] = useState(null)
+  const [recovery, setRecovery] = useState(() => {
+    try {
+      return isRecoveryUrl(window.location)
+    } catch {
+      return false
+    }
+  })
+  const [authMode, setAuthMode] = useState('sign-up')
+  const [authNotice, setAuthNotice] = useState('')
+  const [organizerCourses, setOrganizerCourses] = useState([])
+  const [organizerCoursesLoading, setOrganizerCoursesLoading] = useState(false)
+  const [openOrganizerCourseId, setOpenOrganizerCourseId] = useState(() => {
+    try {
+      return readOpenOrganizerCourse(localStorage)
+    } catch {
+      return null
+    }
+  })
 
-  async function loadAllData(showInitialLoader = true) {
+  async function loadAllData({ showInitialLoader = true, courseId: requestedCourseId = null } = {}) {
     if (showInitialLoader) {
       setLoading(true)
     } else {
@@ -99,52 +145,43 @@ export default function App() {
     setError('')
 
     try {
+      const courseResult = await runQueryWithTimeout(
+        supabase.from('courses').select('*').order('created_at', { ascending: true }),
+        'courses'
+      )
+
+      let activeCourse = null
+      if (courseResult.error) {
+        if (!isCoursesUnavailable(courseResult.error)) {
+          throw new Error(courseResult.error.message || 'Failed to load courses')
+        }
+      } else {
+        const courses = courseResult.data || []
+        activeCourse = requestedCourseId
+          ? courses.find((row) => row.id === requestedCourseId) || null
+          : pickActiveCourse(courses)
+        if (!activeCourse) {
+          throw new Error(
+            requestedCourseId
+              ? 'That course could not be loaded.'
+              : `No course found. Add ${LEGACY_COURSE_TITLE} with the courses migration.`
+          )
+        }
+      }
+
+      setCourse(activeCourse)
+      const courseId = activeCourse?.id ?? null
+
       const queries = [
-        {
-          key: 'holes',
-          required: true,
-          promise: supabase.from('holes').select('*').order('hole_number', { ascending: true }),
-        },
-        {
-          key: 'teams',
-          required: true,
-          promise: supabase.from('teams').select('*').order('id', { ascending: true }),
-        },
-        {
-          key: 'players',
-          required: true,
-          promise: supabase.from('players').select('*').order('rank', { ascending: true }),
-        },
-        {
-          key: 'scores',
-          required: true,
-          promise: supabase.from('scores').select('*'),
-        },
-        {
-          key: 'keg',
-          required: true,
-          promise: supabase.from('keg_stand_entries').select('*'),
-        },
-        {
-          key: 'pitcher',
-          required: true,
-          promise: supabase.from('pitcher_finishes').select('*'),
-        },
-        {
-          key: 'guinness',
-          required: true,
-          promise: supabase.from('guinness_split_votes').select('*'),
-        },
-        {
-          key: 'bunker',
-          required: true,
-          promise: supabase.from('bunker_hazard_entries').select('*'),
-        },
-        {
-          key: 'playerStats',
-          required: false,
-          promise: supabase.from('player_stats').select('*'),
-        },
+        { key: 'holes', required: true, promise: courseRows('holes', courseId).order('hole_number', { ascending: true }) },
+        { key: 'teams', required: true, promise: courseRows(PUBLIC_TEAMS_TABLE, courseId).order('id', { ascending: true }) },
+        { key: 'players', required: true, promise: courseRows('players', courseId).order('name', { ascending: true }) },
+        { key: 'scores', required: true, promise: courseRows('scores', courseId) },
+        { key: 'keg', required: true, promise: courseRows('keg_stand_entries', courseId) },
+        { key: 'pitcher', required: true, promise: courseRows('pitcher_finishes', courseId) },
+        { key: 'guinness', required: true, promise: courseRows('guinness_split_votes', courseId) },
+        { key: 'bunker', required: true, promise: courseRows('bunker_hazard_entries', courseId) },
+        { key: 'playerStats', required: false, promise: courseRows('player_stats', courseId) },
       ]
 
       const settled = await Promise.allSettled(
@@ -201,39 +238,14 @@ export default function App() {
       setBunkerHazardEntries(nextBunker)
       setPlayerStats(nextPlayerStats)
 
-      setLoggedInTeam((current) => {
-        if (!current?.id) return null
-
-        const freshTeam = nextTeams.find((team) => team.id === current.id)
-        if (!freshTeam) {
-          try {
-            localStorage.removeItem(TEAM_LOGIN_STORAGE_KEY)
-          } catch {
-            // ignore
-          }
-          return null
-        }
-
-        const memberNames = nextPlayers
-          .filter((p) => p.team_id === freshTeam.id)
-          .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
-          .map((p) => p.name)
-        const enrichedTeam = { ...freshTeam, members: memberNames }
-
-        try {
-          localStorage.setItem(TEAM_LOGIN_STORAGE_KEY, JSON.stringify(enrichedTeam))
-        } catch {
-          // ignore
-        }
-
-        return enrichedTeam
-      })
-
       if (requiredErrors.length) {
         setError(`Some data failed to load: ${requiredErrors.join(' | ')}`)
       }
+
+      return { teams: nextTeams, failed: requiredErrors.length > 0 }
     } catch (loadError) {
       setError(loadError?.message || 'Failed to load data')
+      return { teams: [], failed: true }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -247,35 +259,233 @@ export default function App() {
     } catch (refreshError) {
       console.warn('refresh_player_stats threw:', refreshError?.message || refreshError)
     }
-    await loadAllData(false)
+    await loadAllData({
+      showInitialLoader: false,
+      courseId: membershipRef.current?.courseId ?? null,
+    })
   }
 
   useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      setAuthUser(session?.user ?? null)
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
+      if (event === 'SIGNED_OUT') setAuthUser(null)
+    })
+    return () => data.subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
     const loadTimer = window.setTimeout(() => {
-      void loadAllData()
+      void (async () => {
+        setRestoringJoin(true)
+        const remembered = readRememberedJoin(localStorage)
+        let nextMembership = null
+        let notice = ''
+        let user = null
+
+        try {
+          const sessionResult = await supabase.auth.getSession()
+          user = sessionResult.data?.session?.user ?? null
+          if (!cancelled) setAuthUser(user)
+
+          if (remembered) {
+            const restored = await restoreVerifiedMembership(supabase, remembered)
+            if (cancelled) return
+            if (restored.ok) {
+              nextMembership = restored.membership
+            } else if (restored.message) {
+              notice = restored.message
+              clearRememberedJoin(localStorage)
+            }
+          } else {
+            clearRememberedJoin(localStorage)
+          }
+
+          if (nextMembership) {
+            const loaded = await loadAllData({
+              courseId: nextMembership.courseId,
+            })
+            if (cancelled) return
+            if (
+              !loaded.failed &&
+              !loaded.teams.some((team) => team.id === nextMembership.teamId)
+            ) {
+              clearRememberedJoin(localStorage)
+              nextMembership = null
+              notice = 'Your team is no longer on this course.'
+            }
+          } else if (!cancelled) {
+            setLoading(false)
+          }
+
+          if (cancelled) return
+          setJoinNotice(notice)
+          setMembership(nextMembership)
+          setScreen(screenForSession({
+            user,
+            membership: nextMembership,
+            recovery: isRecoveryUrl(window.location),
+          }))
+        } finally {
+          if (!cancelled) setRestoringJoin(false)
+        }
+      })()
     }, 0)
 
     return () => {
+      cancelled = true
       window.clearTimeout(loadTimer)
     }
   }, [])
 
-  function handleLogin(team) {
-    setLoggedInTeam(team)
+  useEffect(() => {
+    if (screen !== 'organizer' || !isOrganizerAccount(authUser)) return undefined
+    let cancelled = false
+    setOrganizerCoursesLoading(true)
+    loadOrganizerCourses(supabase, authUser.id).then((result) => {
+      if (cancelled) return
+      setOrganizerCourses(result.courses || [])
+      setOrganizerCoursesLoading(false)
+      if (!result.ok && result.message) setAuthNotice(result.message)
+      const storedId = readOpenOrganizerCourse(localStorage)
+      if (storedId && !(result.courses || []).some((course) => course.id === storedId)) {
+        clearOpenOrganizerCourse(localStorage)
+        setOpenOrganizerCourseId(null)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [screen, authUser])
+
+  async function handleJoin(credentials) {
+    setJoinNotice('')
+    const joined = await joinExistingPlayer(supabase, credentials)
+    if (!joined.ok) return joined.message || 'Could not join that team.'
+
+    writeRememberedJoin(localStorage, credentials)
+    setJoinDraft(credentials)
+    const loaded = await loadAllData({
+      showInitialLoader: false,
+      courseId: joined.membership.courseId,
+    })
+    if (!loaded.failed && !loaded.teams.some((team) => team.id === joined.membership.teamId)) {
+      clearRememberedJoin(localStorage)
+      setMembership(null)
+      return 'Your team is no longer on this course.'
+    }
+
+    setMembership(joined.membership)
+    setScreen('play')
+    return ''
   }
 
-  function handleLogout() {
-    setLoggedInTeam(null)
+  async function handleLeave() {
+    clearRememberedJoin(localStorage)
+    setJoinDraft(null)
+    setMembership(null)
+    setJoinNotice('')
+    setScreen('landing')
   }
+
+  async function handleSignUp(input) {
+    const result = await signUpOrganizer(supabase, input, {
+      emailRedirectTo: window.location.origin,
+    })
+    if (!result.ok) return result
+    if (result.needsEmailConfirmation) {
+      return { ok: true, message: 'Check your email to confirm this account, then sign in.' }
+    }
+    if (result.user) setAuthUser(result.user)
+    setAuthNotice('')
+    setScreen('organizer')
+    return { ok: true }
+  }
+
+  async function handleSignIn(input) {
+    const result = await signInOrganizer(supabase, input)
+    if (!result.ok) return result
+    setAuthUser(result.user)
+    setAuthNotice('')
+    setRecovery(false)
+    setScreen('organizer')
+    return { ok: true }
+  }
+
+  async function handleResetPassword(input) {
+    const result = await sendOrganizerPasswordReset(supabase, input.email, window.location.origin)
+    if (!result.ok) return result
+    return { ok: true, message: 'Check your email for a link to choose a new password.' }
+  }
+
+  async function handleSetPassword(input) {
+    const result = await setOrganizerPassword(supabase, input.password)
+    if (!result.ok) return result
+    setRecovery(false)
+    if (result.user) setAuthUser(result.user)
+    window.history.replaceState({}, '', window.location.pathname)
+    setScreen('organizer')
+    return { ok: true, message: 'Password saved.' }
+  }
+
+  async function handleSignOut() {
+    clearRememberedJoin(localStorage)
+    clearOpenOrganizerCourse(localStorage)
+    setMembership(null)
+    setJoinDraft(null)
+    setOpenOrganizerCourseId(null)
+    setOrganizerCourses([])
+    setRecovery(false)
+    setAuthNotice('')
+    await signOutAccount(supabase)
+    setAuthUser(null)
+    setScreen('landing')
+  }
+
+  async function handleCreateCourse(title) {
+    const result = await createOrganizerCourse(supabase, { title, user: authUser })
+    if (!result.ok) return { message: result.message }
+    setOrganizerCourses((current) => [
+      result.course,
+      ...current.filter((course) => course.id !== result.course.id),
+    ])
+    setOpenOrganizerCourseId(result.course.id)
+    writeOpenOrganizerCourse(localStorage, result.course.id)
+    return {}
+  }
+
+  function handleOpenOrganizerCourse(courseId) {
+    setOpenOrganizerCourseId(courseId)
+    writeOpenOrganizerCourse(localStorage, courseId)
+  }
+
+  function handleCloseOrganizerCourse() {
+    setOpenOrganizerCourseId(null)
+    clearOpenOrganizerCourse(localStorage)
+  }
+
+  const loggedInTeam = useMemo(() => {
+    if (!membership?.teamId) return null
+    const team = teams.find((row) => row.id === membership.teamId)
+    if (!team) return null
+    const roster = sortPlayersByName(players.filter((player) => player.team_id === team.id))
+    const player = roster.find((row) => row.id === membership.playerId)
+    return {
+      ...team,
+      members: roster.map((row) => row.name),
+      playerId: membership.playerId,
+      playerName: player?.name || membership.playerName,
+    }
+  }, [membership, teams, players])
 
   const teamsWithMembers = useMemo(
     () =>
       teams.map((team) => ({
         ...team,
-        members: players
-          .filter((p) => p.team_id === team.id)
-          .sort((a, b) => (Number(a.rank) ?? 0) - (Number(b.rank) ?? 0))
-          .map((p) => p.name),
+        members: sortPlayersByName(
+          players.filter((p) => p.team_id == team.id)
+        ).map((p) => p.name),
       })),
     [teams, players]
   )
@@ -506,28 +716,128 @@ export default function App() {
     }
   }
 
+  const openOrganizerCourse =
+    organizerCourses.find((row) => row.id === openOrganizerCourseId) || null
+  const organizerName = organizerFirstName(authUser)
+
+  if (restoringJoin) {
+    return (
+      <div className="app-shell">
+        <div className="app-container">
+          <div className="app-card">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === 'landing') {
+    return (
+      <div className="app-shell">
+        <div className="app-container">
+          <Landing
+            organizerName={isOrganizerAccount(authUser) ? organizerName : ''}
+            onCreateCourse={() => {
+              setAuthMode('sign-up')
+              setAuthNotice('')
+              setScreen('organizer')
+            }}
+            onJoinCourse={() => setScreen('join')}
+            onOpenOrganizer={() => setScreen('organizer')}
+            onSignOut={handleSignOut}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === 'organizer' && (recovery || !isOrganizerAccount(authUser))) {
+    return (
+      <div className="app-shell">
+        <div className="app-container">
+          <OrganizerAuth
+            mode={recovery ? 'recover' : authMode}
+            notice={authNotice}
+            onMode={setAuthMode}
+            onBack={() => {
+              setAuthNotice('')
+              setScreen(membership ? 'play' : 'landing')
+            }}
+            onSignUp={handleSignUp}
+            onSignIn={handleSignIn}
+            onResetPassword={handleResetPassword}
+            onSetPassword={handleSetPassword}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === 'organizer') {
+    return (
+      <div className="app-shell">
+        <div className="app-container">
+          <div className="app-content">
+            <OrganizerHome
+              firstName={organizerName}
+              courses={organizerCourses}
+              openCourse={openOrganizerCourse}
+              loading={organizerCoursesLoading}
+              notice={authNotice}
+              membership={membership}
+              onCreate={handleCreateCourse}
+              onOpen={handleOpenOrganizerCourse}
+              onCloseCourse={handleCloseOrganizerCourse}
+              onBackToTeam={() => setScreen('play')}
+              onSignOut={handleSignOut}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-shell">
       <div className="app-container">
         <div className="app-content">
           <header className="app-header">
             <div>
-              <h1 className="app-title">Pub Golf: The SQL ☘️</h1>
-              <p className="app-subtitle">Welcome to our very special second pub golf! Use this site to track your team scores and keep up with the overall leaderboard.</p>
+              <h1 className="app-title">
+                {screen === 'play' ? `${course?.title || LEGACY_COURSE_TITLE} ☘️` : 'Join a course'}
+              </h1>
+              <p className="app-subtitle">
+                {screen === 'play'
+                  ? course?.title === LEGACY_COURSE_TITLE || !course
+                    ? 'Welcome to our very special second pub golf! Use this site to track your team scores and keep up with the overall leaderboard.'
+                    : course.description || 'Track your team scores and the overall leaderboard.'
+                  : 'Enter the game code, team code, and the player name already on that team.'}
+              </p>
             </div>
 
-            {refreshing ? <div className="status-pill">Refreshing...</div> : null}
+            <div className="header-actions">
+              {isOrganizerAccount(authUser) ? (
+                <button type="button" className="secondary-button" onClick={() => setScreen('organizer')}>
+                  Organizer courses
+                </button>
+              ) : null}
+              {refreshing ? <div className="status-pill">Refreshing...</div> : null}
+            </div>
           </header>
 
           <TeamLogin
-            teams={teamsWithMembers}
-            loggedInTeam={loggedInTeam}
-            onLogin={handleLogin}
-            onLogout={handleLogout}
+            key={loggedInTeam?.playerId || 'signed-out'}
+            loggedInTeam={screen === 'play' ? loggedInTeam : null}
+            restoring={false}
+            notice={joinNotice}
+            initialJoin={joinDraft}
+            onJoin={handleJoin}
+            onLeave={handleLeave}
             summary={teamPanelSummary}
             onEnterScore={handleEnterScore}
+            onBack={screen === 'join' ? () => setScreen('landing') : null}
           />
 
+          {screen === 'play' ? (
           <div className="view-switch" role="tablist" aria-label="Switch between leaderboard, holes, and players">
             <button
               type="button"
@@ -559,11 +869,12 @@ export default function App() {
               Players
             </button>
           </div>
+          ) : null}
 
-          {loading && <div className="app-card">Loading...</div>}
-          {error && <div className="app-error">{error}</div>}
+          {screen === 'play' && loading && <div className="app-card">Loading...</div>}
+          {screen === 'play' && error && <div className="app-error">{error}</div>}
 
-          {!loading && !error && (
+          {screen === 'play' && !loading && !error && (
             <>
               {activeView === 'leaderboard' && (
                 <LeaderboardView
@@ -581,12 +892,9 @@ export default function App() {
               {activeView === 'holes' && (
                 <HolesView
                   holes={orderedHoles}
-                  holeDataById={holeDataById}
-                  holeStatusById={holeStatusById}
                   holeScoreById={holeScoreById}
                   onOpenHoleDetails={handleOpenHoleDetails}
                   selectedTeam={loggedInTeam}
-                  players={players}
                 />
               )}
               {activeView === 'players' && (
@@ -608,7 +916,6 @@ export default function App() {
             kegEntriesForHole={selectedHoleKegEntries}
             pitcherFinishesForHole={selectedHolePitcherFinishes}
             guinnessVotes={guinnessVotes}
-            bunkerHazardEntries={bunkerHazardEntries}
             onChanged={refreshData}
             onClose={handleCloseHoleDetails}
           />
