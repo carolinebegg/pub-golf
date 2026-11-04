@@ -1,89 +1,56 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import TeamSelector from './TeamSelector'
-
-const STORAGE_KEY = 'pub-golf-team-login'
+import { useState } from 'react'
 
 export default function TeamLogin({
-  teams = [],
   loggedInTeam = null,
   summary = null,
-  onLogin,
-  onLogout,
+  restoring = false,
+  notice = '',
+  initialJoin = null,
+  onJoin,
+  onLeave,
   onEnterScore,
+  onBack,
 }) {
-  const [selectedTeamId, setSelectedTeamId] = useState(loggedInTeam?.id || '')
-  const [joinCode, setJoinCode] = useState('')
+  const [gameCode, setGameCode] = useState(initialJoin?.gameCode || '')
+  const [teamCode, setTeamCode] = useState(initialJoin?.teamCode || '')
+  const [playerName, setPlayerName] = useState(initialJoin?.playerName || '')
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const joinCodeInputRef = useRef(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    if (loggedInTeam || !selectedTeamId) return
-
-    const nextFrame = window.requestAnimationFrame(() => {
-      joinCodeInputRef.current?.focus()
-    })
-
-    return () => {
-      window.cancelAnimationFrame(nextFrame)
-    }
-  }, [selectedTeamId, loggedInTeam])
-
-  const selectedTeam = useMemo(() => {
-    return teams.find((team) => team.id === selectedTeamId) || null
-  }, [teams, selectedTeamId])
-
-  function handleSubmit(e) {
-    e.preventDefault()
+  async function handleSubmit(event) {
+    event.preventDefault()
     setError('')
-    setMessage('')
 
-    if (!selectedTeam) {
-      setError('Choose your team.')
+    if (!gameCode.trim() || !teamCode.trim() || !playerName.trim()) {
+      setError('Enter a game code, team code, and player name.')
       return
     }
 
-    if (!joinCode.trim()) {
-      setError('Enter your join code.')
-      return
-    }
-
-    if (joinCode.trim() !== selectedTeam.join_code) {
-      setError('Incorrect join code.')
-      return
-    }
-
-    const safeTeam = {
-      id: selectedTeam.id,
-      theme: selectedTeam.theme,
-      emoji: selectedTeam.emoji,
-      members: selectedTeam.members || [],
-      join_code: selectedTeam.join_code,
-    }
-
+    setSubmitting(true)
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(safeTeam))
-    } catch {
-      // ignore localStorage failure
+      const message = await onJoin?.({
+        gameCode,
+        teamCode,
+        playerName,
+      })
+      if (message) setError(message)
+    } catch (joinError) {
+      setError(joinError?.message || 'Could not join that team.')
+    } finally {
+      setSubmitting(false)
     }
-
-    onLogin?.(safeTeam)
-    setJoinCode('')
-    setMessage(`Logged in as ${selectedTeam.theme || 'Team'}.`)
   }
 
-  function handleLogoutClick() {
-    try {
-      localStorage.removeItem(STORAGE_KEY)
-    } catch {
-      // ignore localStorage failure
-    }
-
-    setSelectedTeamId('')
-    setJoinCode('')
-    setError('')
-    setMessage('')
-    onLogout?.()
+  if (restoring) {
+    return (
+      <section className="team-panel-wrap">
+        <div className="team-panel-card">
+          <p className="team-panel-eyebrow">Team access</p>
+          <h2 className="team-panel-title">Checking your sign-in</h2>
+          <p className="team-panel-muted">Confirming your team with the server.</p>
+        </div>
+      </section>
+    )
   }
 
   if (loggedInTeam) {
@@ -100,14 +67,20 @@ export default function TeamLogin({
             </span>
           ) : null}
           <div>
-            <p className="team-panel-eyebrow">Logged In</p>
+            <p className="team-panel-eyebrow">Joined</p>
             <h2 className="team-panel-title">{primaryTeamName}</h2>
+            {loggedInTeam.playerName ? (
+              <p className="team-panel-subtitle">Playing as {loggedInTeam.playerName}</p>
+            ) : null}
           </div>
 
           {loggedInTeam.members?.length ? (
             <div className="team-members-row">
               {loggedInTeam.members.map((member) => (
-                <span key={member} className="team-member-pill">
+                <span
+                  key={member}
+                  className={`team-member-pill${member === loggedInTeam.playerName ? ' is-you' : ''}`}
+                >
                   {member}
                 </span>
               ))}
@@ -158,8 +131,8 @@ export default function TeamLogin({
               Enter Score
             </button>
 
-            <button type="button" onClick={handleLogoutClick} className="secondary-button">
-              Log out
+            <button type="button" onClick={onLeave} className="secondary-button">
+              Leave course
             </button>
           </div>
         </div>
@@ -171,26 +144,20 @@ export default function TeamLogin({
     <section className="team-panel-wrap">
       <form onSubmit={handleSubmit} className="team-panel-card">
         <div>
-          <p className="team-panel-eyebrow">Team Access</p>
-          <h2 className="team-panel-title">Team Login</h2>
-          <p className="team-panel-subtitle">Select your team and enter the join code to submit scores.</p>
+          <p className="team-panel-eyebrow">Team access</p>
+          <h2 className="team-panel-title">Join a team</h2>
+          <p className="team-panel-subtitle">
+            Enter the game code, team code, and the player name already on that team.
+          </p>
         </div>
 
-        <TeamSelector
-          teams={teams}
-          selectedTeamId={selectedTeamId}
-          onChange={(value) => setSelectedTeamId(value)}
-          label="Team"
-        />
-
         <label className="team-field">
-          <span className="team-field-label">Join code</span>
+          <span className="team-field-label">Game code</span>
           <input
-            ref={joinCodeInputRef}
             type="text"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            placeholder="Enter join code"
+            value={gameCode}
+            onChange={(event) => setGameCode(event.target.value)}
+            placeholder="Game code"
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck="false"
@@ -198,15 +165,44 @@ export default function TeamLogin({
           />
         </label>
 
-        <button type="submit" className="primary-button">
-          Join Game
+        <label className="team-field">
+          <span className="team-field-label">Team code</span>
+          <input
+            type="text"
+            value={teamCode}
+            onChange={(event) => setTeamCode(event.target.value)}
+            placeholder="Team code"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck="false"
+            className="team-input"
+          />
+        </label>
+
+        <label className="team-field">
+          <span className="team-field-label">Your name</span>
+          <input
+            type="text"
+            value={playerName}
+            onChange={(event) => setPlayerName(event.target.value)}
+            placeholder="Name on the team"
+            autoComplete="name"
+            className="team-input"
+          />
+        </label>
+
+        <button type="submit" className="primary-button" disabled={submitting}>
+          {submitting ? 'Joining...' : 'Join team'}
         </button>
 
-        {message ? <p className="team-success">{message}</p> : null}
+        {notice ? <p className="team-error">{notice}</p> : null}
         {error ? <p className="team-error">{error}</p> : null}
+        {onBack ? (
+          <button type="button" className="secondary-button" onClick={onBack}>
+            Back
+          </button>
+        ) : null}
       </form>
     </section>
   )
 }
-
-export const TEAM_LOGIN_STORAGE_KEY = STORAGE_KEY
