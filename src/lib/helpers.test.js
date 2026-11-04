@@ -4,6 +4,7 @@ import {
   buildOverallLeaderboardData,
   buildPitcherLeaderboard,
   calculateStandardHoleScore,
+  getEffectiveHoleType,
   getGuinnessHoleVoteTeamEffects,
   isHoleComplete,
   validateSplitGVote,
@@ -260,6 +261,68 @@ describe('leaderboard order', () => {
       ['a', 1],
       ['b', 1],
       ['c', 3],
+    ])
+  })
+})
+
+describe('hole type', () => {
+  it('follows the stored type, including a normal hole 2 and pitcher races on 1 and 9', () => {
+    expect(getEffectiveHoleType({
+      hole_number: 2,
+      primary_type: 'normal',
+      hole_type: 'standard',
+    })).toBe('standard')
+    expect(getEffectiveHoleType({
+      hole_number: 1,
+      primary_type: 'pitcher_kill',
+      hole_type: 'pitcher_race',
+    })).toBe('pitcher')
+    expect(getEffectiveHoleType({
+      hole_number: 9,
+      primary_type: 'pitcher_kill',
+      hole_type: 'pitcher_race',
+    })).toBe('pitcher')
+    expect(getEffectiveHoleType({
+      hole_number: 1,
+      primary_type: 'keg_stand',
+      hole_type: 'keg_stand',
+    })).toBe('keg_stand')
+    expect(getEffectiveHoleType({ hole_number: 2 })).toBe('pitcher')
+    expect(getEffectiveHoleType({ hole_number: 9 })).toBe('pitcher')
+  })
+
+  it('scores a normal hole 2 from sips and a pitcher hole 1 from finish order', () => {
+    const board = buildOverallLeaderboardData({
+      teams: [
+        { id: 'a', theme: 'Red' },
+        { id: 'b', theme: 'Pink' },
+      ],
+      holes: [
+        {
+          id: 'h1',
+          hole_number: 1,
+          bar_name: "Freddy's Bar",
+          primary_type: 'pitcher_kill',
+          hole_type: 'pitcher_race',
+        },
+        {
+          id: 'h2',
+          hole_number: 2,
+          bar_name: 'Buttermilk Bar',
+          primary_type: 'normal',
+          hole_type: 'standard',
+        },
+      ],
+      scores: [{ team_id: 'a', hole_id: 'h2', sips: 2 }],
+      pitcherFinishes: [
+        { team_id: 'b', hole_id: 'h1', finished_at: '2026-11-04T22:00:00Z' },
+        { team_id: 'a', hole_id: 'h1', finished_at: '2026-11-04T22:05:00Z' },
+      ],
+    })
+
+    expect(board.map((row) => [row.teamId, row.holesCompleted, row.totalScore])).toEqual([
+      ['a', 2, 3],
+      ['b', 1, 0],
     ])
   })
 })

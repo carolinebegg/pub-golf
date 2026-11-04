@@ -20,6 +20,7 @@ export default function HoleCard({
           <div style={styles.titleBlock}>
             <div style={styles.holeLabel}>Hole {hole.hole_number}</div>
             <div style={styles.barName}>{hole.bar_name}</div>
+            {hole.address ? <div style={styles.address}>{hole.address}</div> : null}
           </div>
 
           <div style={styles.rightBlock}>
@@ -173,6 +174,12 @@ const styles = {
   barName: {
     fontSize: '1.06rem',
     fontWeight: 800,
+  },
+  address: {
+    marginTop: 4,
+    fontSize: '0.84rem',
+    lineHeight: 1.35,
+    color: '#5a6b62',
   },
   holeTypeBadge: {
     borderWidth: 1,

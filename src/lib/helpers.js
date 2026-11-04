@@ -299,20 +299,31 @@ export function sortHolesByNumber(holes = []) {
 
 /**
  * Resolve hole type used by UI + scoring logic.
- * Holes 2 and 9 are always pitcher race holes.
+ * Stored primary_type wins. The old hole-number shortcut remains only for a
+ * row that never received a primary type.
  */
 export function getEffectiveHoleType(hole) {
-  const holeNumber = toNumber(hole?.hole_number, null)
+  const primaryType = hole?.primary_type
+  const storedType = hole?.hole_type
 
-  if (holeNumber === 2 || holeNumber === 9) {
+  if (
+    primaryType === 'pitcher_kill'
+    || storedType === 'pitcher_race'
+    || storedType === 'pitcher'
+  ) {
     return 'pitcher'
   }
 
-  if (hole?.hole_type === 'keg_stand') {
+  if (primaryType === 'keg_stand' || storedType === 'keg_stand') {
     return 'keg_stand'
   }
 
-  if (hole?.hole_type === 'pitcher') {
+  if (primaryType === 'normal' || primaryType === 'bunker' || primaryType === 'split_the_g') {
+    return 'standard'
+  }
+
+  const holeNumber = toNumber(hole?.hole_number, null)
+  if (holeNumber === 2 || holeNumber === 9) {
     return 'pitcher'
   }
 

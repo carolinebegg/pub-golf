@@ -77,6 +77,7 @@ export default function HoleDetailsModal({
           <div>
             <p className="breakdown-modal-eyebrow">Hole Details</p>
             <h3 className="breakdown-modal-title">Hole {hole.hole_number} - {hole.bar_name}</h3>
+            {hole.address ? <p className="breakdown-modal-members">{hole.address}</p> : null}
             <p className="breakdown-modal-members">{holeTypeLabel} • {formatHoleTimeRange(hole)}</p>
           </div>
 
