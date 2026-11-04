@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { calculateStandardHoleScore, formatCurrency, toBoolean, sortPlayersByRank } from '../lib/helpers'
+import { calculateStandardHoleScore, formatCurrency, toBoolean, sortPlayersByName } from '../lib/helpers'
 
 const SCORE_ADJUSTMENT_TOKENS = {
   teamKaraoke: '[adj:team-karaoke]',
@@ -83,7 +83,6 @@ function getInitialFormState(existingScore) {
   return {
     drinkName: existingScore?.drink_name ?? '',
     sips: existingScore?.sips ?? '',
-    isGuinness: toBoolean(existingScore?.is_guinness),
     drinkerId: existingScore?.player_id != null ? String(existingScore.player_id) : '',
     paidBy: existingScore?.paid_by_player_id != null ? String(existingScore.paid_by_player_id) : '',
     price: existingScore?.price ?? '',
@@ -114,7 +113,7 @@ export default function StandardHoleForm({
 }) {
   const playersForTeam = useMemo(
     () =>
-      sortPlayersByRank(
+      sortPlayersByName(
         players.filter((p) => p.team_id === team?.id)
       ),
     [players, team?.id]
@@ -157,20 +156,19 @@ export default function StandardHoleForm({
     (form.moonStranger ? -2 : 0)
 
   const computedPreviewScore = useMemo(() => {
-    const base = calculateStandardHoleScore({
-      sips: form.sips,
-      is_guinness: form.isGuinness,
-      water_violated: form.waterViolated,
-      threw_up: form.threwUp,
-      spilled_drink: form.spilledDrink,
-      photobooth_missing: form.photoboothMissing,
-      bonus_penalty: effectiveBonusPenalty,
-      split_g_bonus: effectiveSplitGBonus,
-    })
-    if (base === null) return null
-    const bunkerPenalty = hole?.has_bunker && !form.bunkerCompleted ? 3 : 0
-    return base + bunkerPenalty
-  }, [form, effectiveBonusPenalty, effectiveSplitGBonus, hole?.has_bunker])
+    return calculateStandardHoleScore(
+      {
+        sips: form.sips,
+        water_violated: form.waterViolated,
+        threw_up: form.threwUp,
+        spilled_drink: form.spilledDrink,
+        photobooth_missing: form.photoboothMissing,
+        bonus_penalty: effectiveBonusPenalty,
+        split_g_bonus: effectiveSplitGBonus,
+      },
+      { bunkerIncomplete: Boolean(hole.has_bunker) && !form.bunkerCompleted },
+    )
+  }, [form, effectiveBonusPenalty, effectiveSplitGBonus, hole.has_bunker])
 
   function updateField(key, value) {
     setForm((prev) => ({
@@ -248,7 +246,7 @@ export default function StandardHoleForm({
       hole_id: hole.id,
       drink_name: form.drinkName.trim() || null,
       sips: parsedSips,
-      is_guinness: toBoolean(form.isGuinness),
+      is_guinness: toBoolean(existingScore?.is_guinness),
       player_id: form.drinkerId || null,
       paid_by_player_id: form.paidBy || null,
       price: form.price === '' ? null : Number(form.price),
@@ -414,15 +412,6 @@ export default function StandardHoleForm({
             />
           </label>
         </div>
-
-        <label style={styles.checkboxRow}>
-          <input
-            type="checkbox"
-            checked={form.isGuinness}
-            onChange={(e) => updateField('isGuinness', e.target.checked)}
-          />
-          Guinness (-1)
-        </label>
       </section>
 
       {hole.has_bunker ? (

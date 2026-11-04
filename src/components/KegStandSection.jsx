@@ -4,7 +4,7 @@ import {
   buildKegStandTeamLeaderboard,
   formatSeconds,
   rankKegStandIndividualEntries,
-  sortPlayersByRank,
+  sortPlayersByName,
 } from '../lib/helpers'
 import HoleLeaderboard from './HoleLeaderboard'
 
@@ -20,7 +20,7 @@ export default function KegStandSection({
   const [seconds, setSeconds] = useState('')
   const [editingEntryId, setEditingEntryId] = useState(null)
 
-  const playersForTeam = sortPlayersByRank(
+  const playersForTeam = sortPlayersByName(
     players.filter((p) => p.team_id === team?.id)
   )
   

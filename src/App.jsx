@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './lib/supabase'
 import {
   buildOverallLeaderboardData,
-  getEffectiveHoleType,
+  isHoleComplete,
+  LEGACY_COURSE_TITLE,
+  pickActiveCourse,
   sortHolesByNumber,
-  sortPlayersByRank,
+  sortPlayersByName,
 } from './lib/helpers'
 import TeamLogin, { TEAM_LOGIN_STORAGE_KEY } from './components/TeamLogin'
 import LeaderboardView from './components/LeaderboardView'
@@ -14,26 +16,20 @@ import TeamBreakdownModal from './components/TeamBreakdownModal'
 import HoleDetailsModal from './components/HoleDetailsModal'
 import './App.css'
 
-function isHoleComplete(hole, holeState) {
-  if (!holeState) return false
+const QUERY_TIMEOUT_MS = 20000
 
-  const holeType = getEffectiveHoleType(hole)
-
-  switch (holeType) {
-    case 'keg_stand':
-      return Array.isArray(holeState.kegEntries) && holeState.kegEntries.length > 0
-    case 'pitcher':
-      return Boolean(holeState.pitcherFinish)
-    case 'standard':
-    default:
-      if (hole.has_guinness) {
-        return Boolean(holeState.guinnessVote)
-      }
-      return Boolean(holeState.existingScore)
-  }
+function isCoursesUnavailable(error) {
+  if (!error) return false
+  const code = String(error.code || '')
+  const message = String(error.message || '')
+  if (code === '42P01' || code === 'PGRST205') return true
+  return /could not find the table.*courses|relation ["']?(public\.)?courses["']? does not exist/i.test(message)
 }
 
-const QUERY_TIMEOUT_MS = 20000
+function courseRows(table, courseId) {
+  const query = supabase.from(table).select('*')
+  return courseId ? query.eq('course_id', courseId) : query
+}
 
 function runQueryWithTimeout(queryPromise, queryName, timeoutMs = QUERY_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
@@ -63,6 +59,7 @@ export default function App() {
   const [guinnessVotes, setGuinnessVotes] = useState([])
   const [bunkerHazardEntries, setBunkerHazardEntries] = useState([])
   const [playerStats, setPlayerStats] = useState([])
+  const [course, setCourse] = useState(null)
 
   const [loggedInTeam, setLoggedInTeam] = useState(() => {
     try {
@@ -100,52 +97,36 @@ export default function App() {
     setError('')
 
     try {
+      const courseResult = await runQueryWithTimeout(
+        supabase.from('courses').select('*').order('created_at', { ascending: true }),
+        'courses'
+      )
+
+      let activeCourse = null
+      if (courseResult.error) {
+        if (!isCoursesUnavailable(courseResult.error)) {
+          throw new Error(courseResult.error.message || 'Failed to load courses')
+        }
+      } else {
+        activeCourse = pickActiveCourse(courseResult.data || [])
+        if (!activeCourse) {
+          throw new Error(`No course found. Add ${LEGACY_COURSE_TITLE} with the courses migration.`)
+        }
+      }
+
+      setCourse(activeCourse)
+      const courseId = activeCourse?.id ?? null
+
       const queries = [
-        {
-          key: 'holes',
-          required: true,
-          promise: supabase.from('holes').select('*').order('hole_number', { ascending: true }),
-        },
-        {
-          key: 'teams',
-          required: true,
-          promise: supabase.from('teams').select('*').order('id', { ascending: true }),
-        },
-        {
-          key: 'players',
-          required: true,
-          promise: supabase.from('players').select('*').order('rank', { ascending: true }),
-        },
-        {
-          key: 'scores',
-          required: true,
-          promise: supabase.from('scores').select('*'),
-        },
-        {
-          key: 'keg',
-          required: true,
-          promise: supabase.from('keg_stand_entries').select('*'),
-        },
-        {
-          key: 'pitcher',
-          required: true,
-          promise: supabase.from('pitcher_finishes').select('*'),
-        },
-        {
-          key: 'guinness',
-          required: true,
-          promise: supabase.from('guinness_split_votes').select('*'),
-        },
-        {
-          key: 'bunker',
-          required: true,
-          promise: supabase.from('bunker_hazard_entries').select('*'),
-        },
-        {
-          key: 'playerStats',
-          required: false,
-          promise: supabase.from('player_stats').select('*'),
-        },
+        { key: 'holes', required: true, promise: courseRows('holes', courseId).order('hole_number', { ascending: true }) },
+        { key: 'teams', required: true, promise: courseRows('teams', courseId).order('id', { ascending: true }) },
+        { key: 'players', required: true, promise: courseRows('players', courseId).order('name', { ascending: true }) },
+        { key: 'scores', required: true, promise: courseRows('scores', courseId) },
+        { key: 'keg', required: true, promise: courseRows('keg_stand_entries', courseId) },
+        { key: 'pitcher', required: true, promise: courseRows('pitcher_finishes', courseId) },
+        { key: 'guinness', required: true, promise: courseRows('guinness_split_votes', courseId) },
+        { key: 'bunker', required: true, promise: courseRows('bunker_hazard_entries', courseId) },
+        { key: 'playerStats', required: false, promise: courseRows('player_stats', courseId) },
       ]
 
       const settled = await Promise.allSettled(
@@ -215,7 +196,7 @@ export default function App() {
           return null
         }
 
-        const memberNames = sortPlayersByRank(
+        const memberNames = sortPlayersByName(
           nextPlayers.filter((p) => p.team_id == freshTeam.id)
         ).map((p) => p.name)
         const enrichedTeam = { ...freshTeam, members: memberNames }
@@ -242,6 +223,8 @@ export default function App() {
 
   async function refreshData() {
     try {
+      // The live database and the unapplied courses migration both expose
+      // refresh_player_stats() with no arguments.
       const { error: refreshError } = await supabase.rpc('refresh_player_stats')
       if (refreshError) console.warn('refresh_player_stats:', refreshError.message)
     } catch (refreshError) {
@@ -272,7 +255,7 @@ export default function App() {
     () =>
       teams.map((team) => ({
         ...team,
-        members: sortPlayersByRank(
+        members: sortPlayersByName(
           players.filter((p) => p.team_id == team.id)
         ).map((p) => p.name),
       })),

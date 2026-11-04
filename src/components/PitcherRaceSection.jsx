@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { buildPitcherLeaderboard, formatCurrency, sortPlayersByRank} from '../lib/helpers'
+import { buildPitcherLeaderboard, formatCurrency, sortPlayersByName } from '../lib/helpers'
 import HoleLeaderboard from './HoleLeaderboard'
 import PrimaryActionButton from './PrimaryActionButton'
 
@@ -15,7 +15,7 @@ export default function PitcherRaceSection({
 }) {
   const playersForTeam = useMemo(
     () =>
-      sortPlayersByRank(
+      sortPlayersByName(
         (players || []).filter((p) => p.team_id === team?.id)
       ),
     [players, team?.id]

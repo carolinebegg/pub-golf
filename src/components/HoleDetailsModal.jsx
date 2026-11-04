@@ -10,7 +10,8 @@ import {
   formatHoleTimeRange,
   getHoleDisplayLabel,
   getEffectiveHoleType,
-  sortPlayersByRank,
+  sortPlayersByName,
+  validateSplitGVote,
 } from '../lib/helpers'
 
 export default function HoleDetailsModal({
@@ -53,7 +54,9 @@ export default function HoleDetailsModal({
   const holeType = getEffectiveHoleType(hole)
   const holeTypeLabel = getHoleDisplayLabel(hole, holeType)
   const statusLabel = getStatusLabel(holeStatus)
-  const scorePreview = calculateStandardHoleScore(existingScore)
+  const scorePreview = calculateStandardHoleScore(existingScore, {
+    bunkerIncomplete: Boolean(hole?.has_bunker) && !bunkerEntryForHole,
+  })
   const isGuinnessHole = Boolean(hole?.has_guinness)
 
   function handleBackdropMouseDown(event) {
@@ -251,7 +254,7 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
     })
   }
 
-  const options = sortPlayersByRank(
+  const options = sortPlayersByName(
       players.filter((p) => p.team_id !== votingTeam.id)
     ).map((p) => ({
       playerId: p.id,
@@ -277,18 +280,17 @@ function GuinnessVotingForm({ hole, votingTeam, allTeams, players = [], votes = 
     event.preventDefault()
     setError('')
 
-    if (!bestSelection && !worstSelection) {
-      setError('Select at least one vote.')
-      return
-    }
-
-    if (bestSelection && worstSelection && bestSelection === worstSelection) {
-      setError('Best and worst split cannot be the exact same person.')
-      return
-    }
-
     const bestPlayer = bestSelection ? playerById.get(bestSelection) : null
     const worstPlayer = worstSelection ? playerById.get(worstSelection) : null
+    const voteError = validateSplitGVote({
+      votingTeamId: votingTeam.id,
+      bestPlayer,
+      worstPlayer,
+    })
+    if (voteError) {
+      setError(voteError)
+      return
+    }
 
     setSaving(true)
 

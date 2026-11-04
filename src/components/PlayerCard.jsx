@@ -22,8 +22,6 @@ export default function PlayerCard({
 }) {
   const [flipped, setFlipped] = useState(false)
 
-  const displayRank = player.rank != null && player.rank !== '' ? String(player.rank) : '—'
-
   const totalDrinks = stats ? formatStatValue('total_drinks', stats.total_drinks) : '—'
   const bunkerHazards = stats ? formatStatValue('bunker_hazards', stats.bunker_hazards) : '—'
   const averageSips = stats ? formatStatValue('average_sips', stats.average_sips) : '—'
@@ -57,7 +55,6 @@ export default function PlayerCard({
       >
         <div className="player-card-inner">
           <div className="player-card-front">
-            <div className="player-card-rank">{displayRank}</div>
             <div className="player-card-name">{player.name || '—'}</div>
             <div className="player-card-team">
               {teamEmoji ? (
@@ -92,7 +89,6 @@ export default function PlayerCard({
             <div className="player-card-back-header">
               <span className="player-card-back-name">{player.name || '—'}</span>
               <span className="player-card-back-team">{teamName || '—'}</span>
-              <span className="player-card-back-rank">Rank {displayRank}</span>
             </div>
             <dl className="player-card-stats">
               <div className="player-card-stat">

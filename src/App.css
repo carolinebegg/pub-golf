@@ -390,16 +390,9 @@ p {
   outline-offset: 2px;
 }
 
-.player-card-rank {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--green-700);
-  margin-bottom: 6px;
-}
-
 .player-card-name {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
@@ -500,13 +493,6 @@ p {
 .player-card-back-team {
   font-size: 0.85rem;
   color: var(--text-secondary);
-}
-
-.player-card-back-rank {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--green-700);
-  margin-left: auto;
 }
 
 .player-card-stats {
@@ -782,11 +768,6 @@ p {
     border-radius: 12px;
   }
 
-  .player-card-rank {
-    font-size: 0.9rem;
-    margin-bottom: 4px;
-  }
-
   .player-card-name {
     font-size: 0.8rem;
     margin-bottom: 2px;
@@ -848,11 +829,6 @@ p {
     border-radius: 10px;
   }
 
-  .player-card-rank {
-    font-size: 0.8rem;
-    margin-bottom: 2px;
-  }
-
   .player-card-name {
     font-size: 0.7rem;
     margin-bottom: 2px;
@@ -895,11 +871,6 @@ p {
   .player-card {
     padding: 6px 2px;
     border-radius: 8px;
-  }
-
-  .player-card-rank {
-    font-size: 0.7rem;
-    margin-bottom: 1px;
   }
 
   .player-card-name {
